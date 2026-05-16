@@ -1,0 +1,10 @@
+{
+  "name": "OLED 0.96 pulgadas 128x64 SSD1306",
+  "category": "Display",
+  "driver": "SSD1306",
+  "resolution": "128x64",
+  "communication": "I2C",
+  "voltage_v": 3.3,
+  "pins": ["VCC", "GND", "SCL", "SDA"],
+  "link": "https://es.aliexpress.com/item/1005006141235306.html"
+}

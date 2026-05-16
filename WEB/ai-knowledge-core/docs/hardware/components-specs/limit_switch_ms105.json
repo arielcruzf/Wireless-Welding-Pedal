@@ -1,0 +1,12 @@
+{
+  "name": "Limit Switch MS-105",
+  "category": "Switch",
+  "model": "MS-105",
+  "rating": {
+    "ac_250v": "3A",
+    "ac_125v": "5A"
+  },
+  "action": "SPDT (1NO 1NC)",
+  "mechanical_life": 100000,
+  "pins": ["COM", "NO", "NC"]
+}

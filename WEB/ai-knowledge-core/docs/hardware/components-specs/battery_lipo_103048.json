@@ -1,0 +1,13 @@
+{
+  "name": "Batería LiPo 3.7V 1500mAh 103048",
+  "category": "Power",
+  "capacity": "1500mAh",
+  "voltage_nominal": "3.7V",
+  "voltage_full": "4.2V",
+  "dimensions_mm": {
+    "thickness": 10,
+    "width": 30,
+    "length": 48
+  },
+  "features": ["PCM protection circuit integrated", "JST-PH 2.0 connector", "Rechargeable"]
+}

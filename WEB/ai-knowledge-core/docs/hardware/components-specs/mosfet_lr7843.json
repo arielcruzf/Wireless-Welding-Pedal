@@ -1,0 +1,10 @@
+{
+  "name": "Módulo MOSFET aislado LR7843",
+  "category": "Driver",
+  "chip": "LR7843",
+  "function": "Control de carga alta potencia",
+  "isolation": "Optoacoplado",
+  "voltage_control_pwm_v": [3, 20],
+  "current_max_a": 30,
+  "pins": ["IN+", "IN-", "DC+", "DC-", "LOAD+", "LOAD-"]
+}

@@ -1,0 +1,36 @@
+<svg width="320" height="1280" viewBox="0 0 32 128" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="32" height="128" fill="black" />
+  
+  <!-- Common Styles -->
+  <style>
+    .outline { fill: none; stroke: white; stroke-width: 1; }
+    .bar { fill: white; }
+    .text { fill: white; font-family: monospace; font-weight: bold; font-size: 10px; text-anchor: middle; }
+  </style>
+
+  <!-- BLOCK 1: PWM 51% -->
+  <rect x="1" y="2" width="30" height="26" rx="3" class="outline" />
+  <text x="16" y="20" class="text" style="font-size: 11px; transform: scale(0.9, 1.8); transform-origin: 16px 16px;">51%</text>
+
+  <!-- BLOCK 2: ANTENNA (5/5) -->
+  <rect x="1" y="34" width="30" height="26" rx="3" class="outline" />
+  <rect x="5" y="52" width="3" height="4" class="bar" />
+  <rect x="10" y="48" width="3" height="8" class="bar" />
+  <rect x="15" y="44" width="3" height="12" class="bar" />
+  <rect x="20" y="40" width="3" height="16" class="bar" />
+  <rect x="25" y="38" width="3" height="18" class="bar" />
+
+  <!-- BLOCK 3: BAT TX (4/5) -->
+  <rect x="1" y="66" width="30" height="26" rx="3" class="outline" />
+  <rect x="5" y="70" width="3" height="18" class="bar" />
+  <rect x="10" y="70" width="3" height="18" class="bar" />
+  <rect x="15" y="70" width="3" height="18" class="bar" />
+  <rect x="20" y="70" width="3" height="18" class="bar" />
+
+  <!-- BLOCK 4: BAT RX (3/5) -->
+  <rect x="1" y="98" width="30" height="26" rx="3" class="outline" />
+  <rect x="5" y="102" width="3" height="18" class="bar" />
+  <rect x="10" y="102" width="3" height="18" class="bar" />
+  <rect x="15" y="102" width="3" height="18" class="bar" />
+</svg>

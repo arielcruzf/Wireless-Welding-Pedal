@@ -1,0 +1,327 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2761
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fnil\fcharset0 Menlo-Regular;\f1\fswiss\fcharset0 Helvetica;\f2\froman\fcharset0 Times-Roman;
+\f3\fnil\fcharset0 Roboto-Black;\f4\fnil\fcharset0 AppleColorEmoji;\f5\fnil\fcharset0 HelveticaNeue-Bold;
+\f6\fnil\fcharset0 HelveticaNeue;\f7\fswiss\fcharset0 Helvetica-Bold;\f8\fswiss\fcharset0 Helvetica-Oblique;
+}
+{\colortbl;\red255\green255\blue255;\red0\green0\blue0;\red193\green193\blue193;\red28\green28\blue29;
+\red220\green220\blue220;\red23\green24\blue24;}
+{\*\expandedcolortbl;;\cssrgb\c0\c0\c0;\cssrgb\c80000\c80000\c80000;\cssrgb\c14510\c14510\c14902;
+\cssrgb\c89020\c89020\c89020;\cssrgb\c11765\c12157\c12549;}
+{\*\listtable{\list\listtemplateid1\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid1\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listname ;}\listid1}
+{\list\listtemplateid2\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid101\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listname ;}\listid2}
+{\list\listtemplateid3\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid201\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listname ;}\listid3}
+{\list\listtemplateid4\listhybrid{\listlevel\levelnfc0\levelnfcn0\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{decimal\}.}{\leveltext\leveltemplateid301\'02\'00.;}{\levelnumbers\'01;}\fi-360\li720\lin720 }{\listname ;}\listid4}}
+{\*\listoverridetable{\listoverride\listid1\listoverridecount0\ls1}{\listoverride\listid2\listoverridecount0\ls2}{\listoverride\listid3\listoverridecount0\ls3}{\listoverride\listid4\listoverridecount0\ls4}}
+\paperw11900\paperh16840\margl1440\margr1440\vieww20380\viewh12620\viewkind0
+\deftab720
+\pard\pardeftab720\sl552\sa321\partightenfactor0
+
+\f0\fs48 \cf2 \expnd0\expndtw0\kerning0
+Antigravity\
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardeftab720\pardirnatural\partightenfactor0
+
+\f1\fs24 \cf0 \kerning1\expnd0\expndtw0 \
+\
+\pard\pardeftab720\partightenfactor0
+
+\f2 \cf0 \expnd0\expndtw0\kerning0
+@Stitch, inicia un proyecto web para Wordpress (last version) con ecommerce (woocoomerce), el cual subire a un servidor (hostalia). Los archivos del Theme y Pluguins a crear tienen que estar dentro de la carpeta raiz \'93wireless-pedal/wp-content/\'93, una carperta independiente SQL (del wordpress). Proyecto: Web de venta y desarrollo de un pedal de soldadora inal\'e1mbrico (radio frecuencia 433mhz), Open Sourse (arduino) e impresion 3D (materiales opcionales). Dise\'f1o: front end de una sola pagina vertical. Secciones: 0- cabecera con imagen del pedal y un peque\'f1o texto explicativo, 1- video en loop width 100% heigh 20%, 2-  explicaci\'f3n mas detallada de tecnolog\'eda utilizada y alcance de la integraci\'f3n en otras soldadoras (colecci\'f3n de 5 pins, Welding Trigger y Potentiometer), secci\'f3n de descarga de los archivos DIY mediante pago \'93precio 5eurs\'94 (ventana pop-up de pago PayPal), 3- comunidad foro y GitHub links. Requisitos:  im\'e1genes del producto deben ser ficticias hasta que reemplace por las originales. \
+\
+\
+\
+
+\f0\fs48 \cf2 CAMBIOS:\
+\pard\pardeftab720\sl552\sa321\partightenfactor0
+\cf2 \
+\pard\pardeftab720\partightenfactor0
+
+\f2\fs24 \cf2 MODULOS 433Mhx - LoRa32u4\
+Remplazo de relay por: Mosfet aislado 
+\f3\b\fs30 LR7843\'a0\
+
+\f2\b0\fs24 agregar pantalla OLED de 0.91" (128x32 p\'edxeles) al receptor para ver:\
+\pard\tx220\tx720\pardeftab720\li720\fi-720\partightenfactor0
+\ls1\ilvl0\cf2 \kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+niveles de Materia emisor y receptor\
+\ls1\ilvl0\kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}Coneccion y desconeccion, datos de potenciometro 0 - 100%\
+\pard\tx566\pardeftab720\partightenfactor0
+\cf2 \expnd0\expndtw0\kerning0
+\
+Conclusi\'f3n y Recomendaci\'f3n\
+Para un bot\'f3n lineal tipo potenci\'f3metro en una placa LoRa32u4:\
+1.	Elige el VL53L4CD si buscas la mejor experiencia de usuario. Es el m\'e1s lineal y el que menos zona muerta tiene, lo que har\'e1 que el movimiento del bot\'f3n se sienta natural y profesional sin saltos en los datos.\
+2.	Elige el VL6180X si quieres algo econ\'f3mico, f\'e1cil de programar y con mucha documentaci\'f3n disponible. Es un "todoterreno" para distancias de menos de 10 cm.\
+Mi consejo final: Dado que vas a usar una placa con radio LoRa (que consume mucho al transmitir), aseg\'farate de usar el pin XSHUT (en el VL53L4CD) o SHDN (en el VL6180X) conectado a un pin digital de tu Arduino. De esta forma, puedes apagar el sensor por completo mientras la placa est\'e1 en "deep sleep" y despertar ambos solo cuando necesites tomar una lectura.\
+\pard\pardeftab720\sl552\sa321\partightenfactor0
+
+\f4\fs48 \cf2 \
+****
+\f5\b\fs26 \cf3 \cb4 \kerning1\expnd0\expndtw0 	1	\expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec3 Seguridad:
+\f6\b0 \'a0Es vital tener la antena de 433MHz conectada antes de encender las placas para no da\'f1ar los m\'f3dulos.\cb1 \
+
+\f4\fs48 \cf2 \outl0\strokewidth0 \
+\
+\uc0\u55357 \u56516 
+\f7\b  OPEN SOURCE PROJECT: Wireless Industrial Pedal for Welding Machines (TIG/MIG)\
+\pard\pardeftab720\sl276\sa240\partightenfactor0
+
+\fs24 \cf2 Version:
+\f1\b0  1.0 (Stable Edition with Fail Safe, Auto-Rescue, and Ground Isolation)\
+
+\f7\b Hardware Base:
+\f1\b0  RF-NANO (Arduino Nano + Integrated nRF24L01)\
+\pard\pardeftab720\sl276\sa120\partightenfactor0
+\cf2 \
+\pard\pardeftab720\sl414\sa298\partightenfactor0
+
+\f7\b\fs36 \cf2 1. THE TRANSMITTER (Pedal Side)\
+\pard\pardeftab720\sl276\sa240\partightenfactor0
+
+\f1\b0\fs24 \cf2 The transmitter reads the physical position of the pedal and wirelessly transmits this information to the receiver. All auxiliary switches have been removed; the entire system is controlled seamlessly via the main potentiometer.\
+\pard\pardeftab720\sl322\sa280\partightenfactor0
+
+\f7\b\fs28 \cf2 1.1 Hardware List (Transmitter)\
+\pard\tx220\tx720\pardeftab720\li720\fi-720\sl276\sa240\partightenfactor0
+\ls2\ilvl0\cf2 \kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}
+\f2\b0\fs24 \expnd0\expndtw0\kerning0
+MODULOS 433Mhx - LoRa32u4\
+\pard\tx220\tx720\pardeftab720\li720\fi-720\sl276\sa240\partightenfactor0
+\ls2\ilvl0\cf2 \kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}Sensor l\'e1ser de proximidad \expnd0\expndtw0\kerning0
+VL53L4CD\
+\pard\tx220\tx720\pardeftab720\li720\fi-720\sl276\sa240\partightenfactor0
+\ls2\ilvl0
+\f1\fs28 \cf2 \kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}Limit-Switch
+\f7\b \
+{\listtext	\uc0\u8226 	}cables\
+{\listtext	\uc0\u8226 	}Pedal 3D printed parts\expnd0\expndtw0\kerning0
+\
+\pard\pardeftab720\partightenfactor0
+
+\f6\b0\fs32 \AppleTypeServices\AppleTypeServicesF65539 \cf5 \cb6 \outl0\strokewidth0 \strokec5 LORA32U4-SX1278-433, VL53L4CDV0DH/1, LIPO-103048-1500, LIMIT-SWITCH-KW12, AWG22-SINGLE-CORE
+\f7\b\fs28 \AppleTypeServices \cf2 \cb1 \outl0\strokewidth0 \
+\pard\pardeftab720\sl322\sa280\partightenfactor0
+\cf2 \
+\pard\pardeftab720\sl322\sa280\partightenfactor0
+
+\f1\b0\fs24 \cf2 \
+\pard\pardeftab720\sl322\sa280\partightenfactor0
+
+\f7\b\fs28 \cf2 1.3 Transmitter Code (C++)\
+\pard\pardeftab720\sl276\partightenfactor0
+
+\f1\b0\fs24 \cf2 C++\
+\
+#include <SPI.h>\
+#include <nRF24L01.h>\
+#include <RF24.h>\
+\
+RF24 radio(10, 9); \
+const byte direccion[6] = "PEDAL";\
+\
+// Data Structure (Switches removed, only Potentiometer)\
+struct DatosPedal \{\
+  int valorPot;    \
+\};\
+\
+DatosPedal miPedal;\
+\
+void setup() \{\
+  Serial.begin(9600);\
+  Serial.println(F("--- PEDAL TRANSMITTER V5.0 ---"));\
+\
+  if (!radio.begin()) \{\
+    Serial.println(F("Error: Radio hardware not detected"));\
+    while (1); \
+  \}\
+\
+  radio.openWritingPipe(direccion);\
+  radio.setPALevel(RF24_PA_LOW); // Enhances power stability    \
+  radio.setDataRate(RF24_250KBPS); \
+  radio.stopListening();\
+\}\
+\
+void loop() \{\
+  // Read Potentiometer value\
+  miPedal.valorPot = analogRead(A0);\
+\
+  // Send data\
+  bool ok = radio.write(&miPedal, sizeof(DatosPedal));\
+  imprimirActividad(ok);\
+  \
+  delay(50); \
+\}\
+\
+void imprimirActividad(bool exito) \{\
+  static unsigned long lastPrint = 0;\
+  if (millis() - lastPrint > 250) \{\
+    Serial.print(F("POT: ")); Serial.print(miPedal.valorPot);\
+    Serial.println(exito ? F(" | STATUS: OK") : F(" | STATUS: ERROR"));\
+    lastPrint = millis();\
+  \}\
+\}\
+\pard\pardeftab720\sl276\sa120\partightenfactor0
+\cf2 \
+\pard\pardeftab720\sl414\sa298\partightenfactor0
+
+\f7\b\fs36 \cf2 2. THE RECEIVER (Welder Side)\
+\pard\pardeftab720\sl276\sa240\partightenfactor0
+
+\f1\b0\fs24 \cf2 The receiver converts the wireless signal into a real analog voltage (0-10V) for amperage control. It uses two electromechanical relays: one to start the welding arc, and another to isolate the welder's potentiometer ground when resting, eliminating any signal noise.\
+\pard\tx220\tx720\pardeftab720\li720\fi-720\sl276\sa240\partightenfactor0
+\ls3\ilvl0
+\f7\b\fs28 \cf2 \kerning1\expnd0\expndtw0 {\listtext	\uc0\u8226 	}
+\f2\b0\fs24 \expnd0\expndtw0\kerning0
+MODULOS 433Mhx - LoRa32u4
+\f1\fs28 \kerning1\expnd0\expndtw0 \
+{\listtext	\uc0\u8226 	}Conector GX12 / male\
+{\listtext	\uc0\u8226 	}2x Mosfet LR7843-30V\
+{\listtext	\uc0\u8226 	}OLED 128X32 pantalla\
+{\listtext	\uc0\u8226 	}Convertidor PWM a DAC 0-5V / 0-10V (para 10-12v)\
+\pard\pardeftab720\sl322\sa280\partightenfactor0
+
+\f7\b \cf2 \expnd0\expndtw0\kerning0
+\
+\
+2.3 Receiver Code (V5.0 Final)\
+\pard\pardeftab720\sl276\partightenfactor0
+
+\f1\b0\fs24 \cf2 C++\
+\
+#include <SPI.h>\
+#include <nRF24L01.h>\
+#include <RF24.h>\
+\
+RF24 radio(10, 9); \
+const byte direccion[6] = "PEDAL";\
+\
+struct DatosPedal \{\
+  int valorPot;\
+\};\
+\
+DatosPedal miPedal;\
+\
+// CALIBRATION VARIABLES\
+int PotMin = 80;                   \
+int PotMax = 1000;                  \
+unsigned long recoveryDelay = 800; // 0.8 seconds critical threshold\
+\
+unsigned long ultimaRecepcion = 0;\
+bool sistemaBloqueado = true;     \
+String statusActual = "INITIALIZING"; \
+\
+void setup() \{\
+  Serial.begin(9600);\
+  Serial.println(F("--- WELDER RECEIVER V5.0 ---"));\
+\
+  radio.begin();\
+  radio.openReadingPipe(1, direccion);\
+  radio.setPALevel(RF24_PA_LOW);   \
+  radio.setDataRate(RF24_250KBPS); \
+  radio.startListening();\
+\
+  pinMode(3, OUTPUT); // PWM Output (0-10V)\
+  pinMode(4, OUTPUT); // RELAY 1: Torch Trigger\
+  pinMode(5, OUTPUT); // RELAY 2: Potentiometer GND Isolation\
+  \
+  activarFailsafe();\
+\}\
+\
+void loop() \{\
+  // Radio Auto-Rescue (SPI Bus protection)\
+  if (radio.failureDetected) \{\
+    radio.begin();\
+    radio.openReadingPipe(1, direccion);\
+    radio.setPALevel(RF24_PA_LOW);\
+    radio.setDataRate(RF24_250KBPS);\
+    radio.startListening();\
+    radio.failureDetected = false;\
+  \}\
+\
+  // 1. DATA RECEPTION\
+  if (radio.available()) \{\
+    radio.read(&miPedal, sizeof(DatosPedal));\
+    ultimaRecepcion = millis();\
+    sistemaBloqueado = false;\
+    statusActual = "CONNECTED";\
+\
+    int valorLimpio = constrain(miPedal.valorPot, PotMin, PotMax);\
+    int salidaPWM;\
+\
+    // Absolute cut-off at rest position\
+    if (miPedal.valorPot <= (PotMin + 10)) \{\
+      salidaPWM = 0;\
+      digitalWrite(3, LOW); \
+    \} else \{\
+      salidaPWM = map(valorLimpio, PotMin, PotMax, 0, 255);\
+      analogWrite(3, salidaPWM); \
+    \}\
+\
+    // Double Relay Activation (Torch & Ground Isolation)\
+    bool estadoTrigger = (miPedal.valorPot > (PotMin + 25)) ? HIGH : LOW;\
+    digitalWrite(4, estadoTrigger); // Fire Torch\
+    digitalWrite(5, estadoTrigger); // Connect Ground\
+  \}\
+\
+  // 2. STATUS & SECURITY MANAGEMENT (FAIL SAFE)\
+  unsigned long tiempoSinDatos = millis() - ultimaRecepcion;\
+\
+  if (!sistemaBloqueado) \{\
+    if (tiempoSinDatos > 100 && tiempoSinDatos < recoveryDelay) \{\
+      statusActual = "LOST SIGNAL"; \
+    \} \
+    else if (tiempoSinDatos >= recoveryDelay) \{\
+      activarFailsafe();\
+      sistemaBloqueado = true;\
+      statusActual = "FAIL SAFE - WELDER OFF";\
+    \}\
+  \}\
+\
+  imprimirTodo();\
+\}\
+\
+void activarFailsafe() \{\
+  digitalWrite(3, LOW); \
+  digitalWrite(4, LOW); \
+  digitalWrite(5, LOW); \
+\}\
+\
+void imprimirTodo() \{\
+  static unsigned long lp = 0;\
+  if (millis() - lp > 200) \{ \
+    int porcentaje = 0;\
+    if (statusActual != "FAIL SAFE - WELDER OFF") \{\
+        porcentaje = map(constrain(miPedal.valorPot, PotMin, PotMax), PotMin, PotMax, 0, 100);\
+    \}\
+    \
+    Serial.print(F("POT: ")); Serial.print(miPedal.valorPot);\
+    Serial.print(F(" | %: ")); Serial.print(porcentaje);\
+    Serial.print(F(" | RELAYS: ")); Serial.print(digitalRead(4) ? F("ON") : F("OFF"));\
+    Serial.print(F(" | STATUS: ")); Serial.println(statusActual);\
+    \
+    lp = millis();\
+  \}\
+\}\
+\pard\pardeftab720\sl276\sa120\partightenfactor0
+\cf2 \
+\pard\pardeftab720\sl414\sa298\partightenfactor0
+
+\f7\b\fs36 \cf2 3. FINAL INSTALLATION NOTES\
+\pard\tx220\tx720\pardeftab720\li720\fi-720\sl276\sa240\partightenfactor0
+\ls4\ilvl0
+\fs24 \cf2 \kerning1\expnd0\expndtw0 {\listtext	1.	}\expnd0\expndtw0\kerning0
+Thermal & Electrical Isolation:
+\f1\b0  The receiver must be installed in a non-conductive enclosure to protect it from metal dust, heat, and direct high-frequency arcs inside the welding machine.\uc0\u8232 \
+\ls4\ilvl0
+\f7\b \kerning1\expnd0\expndtw0 {\listtext	2.	}\expnd0\expndtw0\kerning0
+Relay Advantage:
+\f1\b0  The use of mechanical 
+\f7\b HJR-4102-L-5V
+\f1\b0  relays ensures absolute zero leakage current when the pedal is not pressed. Relay 2 strictly disconnects the potentiometer ground, completely neutralizing any phantom voltages or electrical noise that could confuse the welder's logic board at 0% throttle.\uc0\u8232 \
+\ls4\ilvl0
+\f7\b \kerning1\expnd0\expndtw0 {\listtext	3.	}\expnd0\expndtw0\kerning0
+Fail Safe System:
+\f1\b0  If the pedal runs out of battery, goes out of range, or suffers from severe electromagnetic interference, the receiver will automatically trigger the 
+\f8\i Fail Safe
+\f1\i0  protocol in under 0.8 seconds, shutting down the relays and stopping the welding arc immediately.\uc0\u8232 \
+}

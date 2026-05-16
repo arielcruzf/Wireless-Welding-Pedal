@@ -1,0 +1,9 @@
+{
+  "name": "Módulo PWM a DAC 0-5V/0-10V",
+  "category": "Signal Conv",
+  "input": "PWM signal",
+  "output_v": ["0-5V", "0-10V"],
+  "voltage_supply_v": [12, 30],
+  "adjustment": "Multiturn potentiometer",
+  "pins": ["VCC", "GND", "PWM IN", "GND IN", "VOUT+", "VOUT-"]
+}

@@ -1,0 +1,9 @@
+{
+  "name": "Conector GX12 Macho 6 pines",
+  "category": "Connector",
+  "model": "GX12-6P Male",
+  "type": "Aviation/Industrial",
+  "mounting_size_mm": 12,
+  "pins_count": 6,
+  "material": "Zinc/Nickel"
+}

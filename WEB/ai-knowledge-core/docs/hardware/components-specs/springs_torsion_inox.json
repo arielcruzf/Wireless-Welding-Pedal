@@ -1,0 +1,9 @@
+{
+  "name": "Resortes de torsión Inox 304 Tipo V",
+  "category": "Mecha",
+  "material": "Acero inoxidable 304",
+  "wire_diameter_mm": 1.0,
+  "turns": 6,
+  "angle_deg": 60,
+  "function": "Reset/Retorno pedal"
+}

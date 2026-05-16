@@ -1,0 +1,10 @@
+{
+  "name": "Sensor Distancia VL53L4CD ToF",
+  "category": "Sensor",
+  "technology": "Time-of-Flight (ToF)",
+  "range_mm": [1, 1300],
+  "accuracy": "+/- 3%",
+  "communication": "I2C",
+  "voltage_logic_v": [2.6, 3.5],
+  "pins": ["VCC", "GND", "SDA", "SCL", "XSHUT"]
+}

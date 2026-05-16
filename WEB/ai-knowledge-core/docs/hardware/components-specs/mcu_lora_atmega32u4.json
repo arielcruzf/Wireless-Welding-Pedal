@@ -1,0 +1,15 @@
+{
+  "name": "DIYmall LoRa32u4 RA-02 433MHz",
+  "category": "IC / RF",
+  "mcu": "ATmega32u4 (8MHz)",
+  "rf_chip": "SX1278 (LoRa)",
+  "frequency": "433MHz",
+  "voltage_logic": "3.3V",
+  "range": "Up to 1KM",
+  "interfaces": ["USB (programming/charging)", "JST (LiPo battery)", "SPI (internal)"],
+  "pins_internal": {
+    "NSS": 8,
+    "RST": 4,
+    "DIO0": 7
+  }
+}

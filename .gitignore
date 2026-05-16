@@ -1,0 +1,22 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# Node.js / Web
+web/node_modules/
+web/.next/
+web/out/
+web/.env.local
+web/.env.development.local
+web/.env.test.local
+web/.env.production.local
+
+# Arduino / Firmware
+FIRMWARE/**/build/
+FIRMWARE/**/*.hex
+FIRMWARE/**/*.bin
+FIRMWARE/**/*.elf
+
+# Temp files
+*.tmp
+*.log

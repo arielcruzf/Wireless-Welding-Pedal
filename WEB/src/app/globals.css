@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-100: hsl(210, 100%, 95%);
+  --color-brand-300: hsl(215, 96%, 73%);
+  --color-brand-500: hsl(220, 90%, 50%);
+  --color-brand-700: hsl(225, 80%, 35%);
+  --color-brand-900: hsl(230, 70%, 20%);
+  
+  --color-surface-50: hsl(0, 0%, 99%);
+  --color-surface-100: hsl(210, 15%, 95%);
+  --color-surface-200: hsl(210, 10%, 90%);
+  --color-surface-900: hsl(210, 10%, 15%);
+  
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-outfit), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  :root {
+    --background: var(--color-surface-50);
+    --foreground: var(--color-surface-900);
+  }
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+}
+
+/* Utils */
+.text-gradient {
+  background: linear-gradient(135deg, var(--color-brand-500), var(--color-brand-900));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.premium-shadow {
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+}
+
+.glass-panel {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
