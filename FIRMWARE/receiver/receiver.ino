@@ -252,6 +252,8 @@ void loop() {
       wakeSystem();
       while (digitalRead(PIN_MODE) == LOW)
         delay(10);
+    }
+    return;
   }
 
   // Reset calibration dynamically when Serial Monitor is opened
