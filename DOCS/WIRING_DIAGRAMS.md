@@ -31,6 +31,7 @@ The transmitter integrates the MCU (ATmega32u4 @ 8MHz) and the LoRa SX1278 radio
 | **VL53L4CD - GND** | GND | ⚫ Black | Ground |
 | **VL53L4CD - SCL** | Pin 3 (SCL) | 🔵 Blue | I2C Clock |
 | **VL53L4CD - SDA** | Pin 2 (SDA) | 🟡 Yellow | I2C Data |
+| **VL53L4CD - LPN/XSHUT**| Pin 6 | 🟣 Purple | Laser Sleep/Wake Control (Open-Drain) |
 | **MS-105 - COM** | Pin 11 | 🟢 Green | Trigger/Safety (INPUT_PULLUP, Active LOW) |
 | **MS-105 - NO** | GND | ⚫ Black | Closes on press -> LOW on Pin 11 |
 | **LIPO-103048-1500 (+)** | JST BAT (LEFT) | 🔴 Thick Red | 3.7V Power (Check Polarity!) |
@@ -50,8 +51,8 @@ The transmitter integrates the MCU (ATmega32u4 @ 8MHz) and the LoRa SX1278 radio
 | **Battery** | LiPo 103048-1500mAh | 3.7V nom. (4.2V full) · 10x30x48mm · rechargeable |
 | **Return Springs** | 304 Stainless V-type | ø1.0mm · 6 turns · 60° · mechanical pedal reset |
 
-> [!IMPORTANT]
-> **The XSHUT Conflict:** The orange wire (XSHUT / LPN) that previously went to Pin 6 has been **removed from the design**. Connecting it caused a resistance conflict with the LoRa32u4 board that choked the I2C bus. By leaving it disconnected, the sensor turns on automatically via its internal pull-up resistor.
+> [!TIP]
+> **XSHUT/LPN Resolution (v1.0 POWER-MASTER):** The LPN pin of the sensor is now connected to **Pin 6** using a purple wire. Previous I2C conflicts have been resolved in firmware v1.0 using an Open-Drain software configuration (input for ON, output LOW for OFF), allowing maximum power savings during deep sleep.
 > **Trigger (Pin 11):** The trigger has been moved from Pin 5 to Pin 11 to avoid internal conflicts with the LoRa radio (DIO1).
 
 > [!CAUTION]

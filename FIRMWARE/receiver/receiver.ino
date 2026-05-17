@@ -6,18 +6,23 @@
 #include <Wire.h>
 #include <avr/sleep.h>
 
-/** PROJECT: Wireless Welder Pedal v1.0 FINAL | RECEIVER UNIT */
+/** PROJECT: Wireless Welder Pedal v1.0 POWER-MASTER | RECEIVER UNIT */
 
 // =============================================================
 //                    USER CONFIGURATION
 // =============================================================
-const long FAILSAFE_LIMIT = 1000;         // Max wait time for signal
-const unsigned long DEEP_SLEEP_MIN = 15;  // Minutes before Deep Sleep
-const int PEDAL_UP_MM = 60;               // Pedal up distance
-const int PEDAL_DOWN_MM = 17;             // Pedal down distance
-const int PWM_MAX_VAL = 244;              // Max PWM output value
-const uint32_t RX_CALIBRATION = 13560UL;  // Internal voltage calibration
-const uint32_t TX_CALIBRATION = 14280UL;  // Transmitter voltage calibration
+const long FAILSAFE_LIMIT = 1000;        // Max wait time for signal
+const unsigned long DEEP_SLEEP_MIN = 10; // Minutes before Deep Sleep
+const int PEDAL_UP_MM = 60;              // Pedal up distance
+const int PEDAL_DOWN_MM = 17;            // Pedal down distance
+const int PWM_MAX_VAL = 244;             // Max PWM output value
+const uint32_t RX_CALIBRATION =
+    15000UL; // Internal voltage calibration (Theoretical)
+const uint32_t TX_CALIBRATION =
+    15000UL; // Transmitter voltage calibration (Theoretical)
+// Note: To physically calibrate these values with a multimeter,
+// uncomment the "CALIBRATION MODE" block at the end of the updateDisplay()
+// function (around line 351) and check the Serial Monitor.
 
 // =============================================================
 //                    HARDWARE PINOUT
@@ -44,6 +49,8 @@ PedalData myPedal;
 uint16_t localBatV = 0;
 int lastRSSI = 0, currentPWM = 0, currentPwmMin = 0;
 unsigned long lastReception = 0, lastActivity = 0;
+float sT = 0,
+      sR = 0; // Global battery smoothing variables to allow reset on wake
 bool systemLocked = true, isStandby = false, outputsEnabled = false,
      powerState = true;
 String currentStatus = "STARTING";
@@ -130,6 +137,14 @@ void sleepSystem() {
   digitalWrite(PIN_LED, LOW);
   display.ssd1306_command(SSD1306_DISPLAYOFF);
   LoRa.sleep();
+
+  // Disable USB controller completely before sleep (notifies host PC of clean disconnect)
+  #if defined(USBCON)
+  USBCON = 0;
+  #endif
+
+  ADCSRA &= ~(1 << ADEN); // Disable ADC safely by clearing only the Enable bit
+                          // (preserves prescaler)
   powerState = false;
   while (digitalRead(PIN_MODE) == LOW)
     delay(10);
@@ -137,11 +152,15 @@ void sleepSystem() {
 
 void wakeSystem() {
   powerState = true;
+  ADCSRA |= (1 << ADEN); // Re-enable ADC preserving original Arduino prescaler
+                         // (prevents 4MHz ADC clock bug)
+  sT = 0; // Reset battery smoothing to snap immediately to real values on wake
+  sR = 0;
 
-  // Force USB re-enumeration to ensure IDE recognizes the port after wake
-  USBDevice.detach();
-  delay(500);
+  // Re-initialize USB controller cleanly from scratch
+  #if defined(USBCON)
   USBDevice.attach();
+  #endif
 
   digitalWrite(PIN_LED, HIGH);
   display.ssd1306_command(SSD1306_DISPLAYON);
@@ -157,6 +176,7 @@ void wakeSystem() {
 // === 2. MAIN LOOP ===
 void loop() {
   if (!powerState) {
+    ADCSRA &= ~(1 << ADEN); // Ensure ADC is OFF (preserving prescaler)
     set_sleep_mode(SLEEP_MODE_PWR_DOWN);
     sleep_enable();
     attachInterrupt(
@@ -164,6 +184,7 @@ void loop() {
     sei();
     sleep_cpu();
     sleep_disable();
+    ADCSRA |= (1 << ADEN); // Re-enable ADC preserving prescaler
     detachInterrupt(digitalPinToInterrupt(PIN_MODE));
     if (digitalRead(PIN_MODE) == LOW) {
       wakeSystem();
@@ -334,7 +355,6 @@ void updateDisplay() {
                          map(i, 0, 4, 4, 20), SSD1306_WHITE);
   }
 
-  static float sT = 0, sR = 0;
   if (currentStatus != "DISCONNECTED") {
     uint16_t tV =
         (uint16_t)(((uint32_t)myPedal.batV * TX_CALIBRATION) / 1000UL);
@@ -345,6 +365,14 @@ void updateDisplay() {
   if (sR == 0)
     sR = localBatV;
   sR = 0.05 * localBatV + 0.95 * sR;
+
+  // --- CALIBRATION MODE (Uncomment to use with Multimeter) ---
+  // Serial.print("RX (Receiver) says: ");
+  // Serial.print(sR);
+  // Serial.print(" mV | TX (Pedal) says: ");
+  // Serial.print(sT);
+  // Serial.println(" mV");
+  // ----------------------------------------------------
 
   auto drawBat = [&](int y, const char *L, float val, bool disc) {
     bool isTX = (strcmp(L, "TX") == 0);
@@ -360,7 +388,7 @@ void updateDisplay() {
       display.setCursor(x_b + half + 7, y + (h - 8) / 2 + 1);
       display.print(F("---"));
     } else {
-      int p = map(constrain((int)val, 3300, 4100), 3300, 4100, 0, 100);
+      int p = map(constrain((int)val, 3100, 4100), 3100, 4100, 0, 100);
       int b = map(p, 0, 100, 0, 5);
       if (p > 0 && b == 0)
         b = 1;

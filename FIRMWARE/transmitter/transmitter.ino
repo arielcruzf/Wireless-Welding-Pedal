@@ -7,12 +7,12 @@
 #include <avr/sleep.h>
 #include <avr/wdt.h>
 
-/** PROJECT: Wireless Welder Pedal v1.0 FINAL | TRANSMITTER UNIT */
+/** PROJECT: Wireless Welder Pedal v1.0 POWER-MASTER | TRANSMITTER UNIT */
 
 // =============================================================
 //                    USER CONFIGURATION
 // =============================================================
-const unsigned long STANDBY_MIN = 2;     // Minutes before Laser Standby
+const unsigned long STANDBY_MIN = 3;     // Minutes before Laser Standby
 const unsigned long DEEP_SLEEP_MIN = 10; // Minutes before Deep Sleep
 const unsigned long WAKE_UP_SAFE_TIME =
     1; // SECONDS to ignore trigger after wake up
@@ -26,6 +26,7 @@ const int LORA_TX_POWER =
 #define PIN_LED 12
 #define PIN_BAT A0
 #define PIN_MODE 0
+#define PIN_LPN 6 // Low Power (XSHUT) pin
 
 // GLOBAL OBJECTS & STATE
 VL53L4CD sensor;
@@ -55,6 +56,7 @@ void setup() {
   pinMode(PIN_MODE, INPUT_PULLUP);
   pinMode(PIN_SWITCH, INPUT_PULLUP);
   pinMode(PIN_LED, OUTPUT);
+  pinMode(PIN_LPN, INPUT); // Startup in High-Z (Power ON via sensor pull-up)
   pinMode(5, OUTPUT);
   digitalWrite(5, HIGH);
   delay(500);
@@ -84,21 +86,45 @@ void sleepSystem() {
     sensor.stopContinuous();
     laserRunning = false;
   }
+
+  // Power down peripherals
+  LoRa.sleep();
+
+  // I2C Pins to INPUT to avoid leakage
+  pinMode(2, INPUT);
+  pinMode(3, INPUT);
+
+  // Turn OFF Laser (Open Drain Logic: LOW = OFF)
+  pinMode(PIN_LPN, OUTPUT);
+  digitalWrite(PIN_LPN, LOW);
+
   digitalWrite(5, LOW);
   digitalWrite(PIN_LED, LOW);
-  LoRa.sleep();
+
+  // Disable USB controller completely before sleep (notifies host PC of clean disconnect)
+  #if defined(USBCON)
+  USBCON = 0;
+  #endif
+
+  ADCSRA &= ~(1 << ADEN); // Disable ADC safely by clearing only the Enable bit
+                          // (preserves prescaler)
   powerState = false;
   isSleeping = false;
 }
 
 void wakeSystem() {
   powerState = true;
+  ADCSRA |= (1 << ADEN); // Re-enable ADC preserving original Arduino prescaler
+                         // (prevents 4MHz ADC clock bug)
   wakeUpTime = millis();
 
-  // Force USB re-enumeration to ensure IDE recognizes the port after wake
-  USBDevice.detach();
-  delay(500);
+  // Re-initialize USB controller cleanly from scratch
+  #if defined(USBCON)
   USBDevice.attach();
+  #endif
+
+  // Turn ON Laser (Open Drain Logic: INPUT = High-Z = ON via sensor pull-up)
+  pinMode(PIN_LPN, INPUT);
 
   digitalWrite(5, HIGH);
   digitalWrite(PIN_LED, HIGH);
@@ -230,11 +256,16 @@ void loop() {
     WDTCSR |= _BV(WDCE) | _BV(WDE);
     WDTCSR = _BV(WDP2) | _BV(WDP1) | _BV(WDP0) | _BV(WDIE);
 
+    ADCSRA &=
+        ~(1 << ADEN); // Ensure ADC is OFF during sleep (preserves prescaler)
     set_sleep_mode(SLEEP_MODE_PWR_DOWN);
     sleep_enable();
     sei();
     sleep_cpu(); // MCU duerme aquí por 2s o hasta pisar el pedal
     sleep_disable();
+    ADCSRA |=
+        (1
+         << ADEN); // Re-enable ADC for battery measurement preserving prescaler
 
     PCICR &= ~(1 << PCIE0);
     WDTCSR &= ~_BV(WDIE); // Desactivar WDT
@@ -321,7 +352,7 @@ void loop() {
   myPedal.batV = analogRead(PIN_BAT);
 
   static int lowBatteryCounter = 0;
-  if (millis() > 10000 && myPedal.batV > 0 && myPedal.batV < 225) {
+  if (millis() > 10000 && myPedal.batV > 0 && myPedal.batV < 217) {
     if (++lowBatteryCounter > 50)
       sleepSystem();
   } else
