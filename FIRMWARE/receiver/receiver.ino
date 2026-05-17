@@ -15,6 +15,9 @@ const long FAILSAFE_LIMIT = 1000;        // Max wait time for signal
 const unsigned long DEEP_SLEEP_MIN = 2; // Minutes before Deep Sleep
 const int PEDAL_UP_MM = 60;              // Pedal up distance
 const int PEDAL_DOWN_MM = 17;            // Pedal down distance
+// Note: To calibrate these distance values, simply connect a USB cable, open the
+// Serial Monitor (115200 baud), and press/release the pedal 3 times. The live console
+// will automatically display the exact PEDAL_UP_MM and PEDAL_DOWN_MM values for you to copy.
 const int PWM_MAX_VAL = 244;             // Max PWM output value
 const uint32_t RX_BATTERY_CALIBRATION =
     17850UL; // Physical battery voltage calibration for Receiver
