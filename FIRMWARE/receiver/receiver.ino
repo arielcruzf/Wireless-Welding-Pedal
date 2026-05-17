@@ -49,6 +49,7 @@ struct __attribute__((packed)) PedalData {
 PedalData myPedal;
 uint16_t localBatV = 0;
 int lastRSSI = 0, currentPWM = 0, currentPwmMin = 0;
+uint16_t lastValidLaserDist = 60; // Última distancia láser registrada antes del apagado
 unsigned long lastReception = 0, lastActivity = 0;
 float sT = 0,
       sR = 0; // Global battery smoothing variables to allow reset on wake
@@ -277,6 +278,9 @@ void loop() {
     outputsEnabled = !isStandby;
     if (isStandby)
       activateFailsafe();
+    else if (myPedal.switchClosed && myPedal.laserDist != 150) {
+      lastValidLaserDist = myPedal.laserDist;
+    }
     currentState = isStandby ? SystemState::STANDBY : SystemState::CONNECTED;
   }
 
@@ -355,6 +359,111 @@ void loop() {
     if (lowestBat > 12) {
       alarm10Triggered = false;
       alarm5Triggered = false;
+    }
+  }
+
+  // --- TELEMETRY & CALIBRATION SERIAL LOGS ---
+  if (Serial) {
+    static unsigned long lastSerialPrint = 0;
+    if (millis() - lastSerialPrint >= 500) {
+      lastSerialPrint = millis();
+      
+      Serial.println(F("\n============================================================"));
+      Serial.println(F("           WIRELESS WELDER PEDAL TELEMETRY & CALIBRATION"));
+      Serial.println(F("============================================================"));
+      
+      // 1. Link Status
+      Serial.print(F("[LINK STATUS]  "));
+      if (currentState == SystemState::DISCONNECTED) {
+        Serial.println(F("DISCONNECTED"));
+        Serial.println(F("[PEDAL STATE]  OFFLINE"));
+        Serial.print(F("[LASER DIST]   Current: --- mm | Last Released (Rest): "));
+        if (lastValidLaserDist == 150) Serial.println(F("--- mm"));
+        else { Serial.print(lastValidLaserDist); Serial.println(F(" mm")); }
+      } else {
+        if (currentState == SystemState::CONNECTED) {
+          Serial.print(F("CONNECTED (RSSI: "));
+          Serial.print(lastRSSI);
+          Serial.println(F(" dBm)"));
+        } else if (currentState == SystemState::HOLDING) {
+          Serial.println(F("HOLDING (interference warning)"));
+        } else if (currentState == SystemState::STANDBY) {
+          Serial.println(F("STANDBY (sleep mode)"));
+        }
+        
+        // 2. Pedal State
+        Serial.print(F("[PEDAL STATE]  "));
+        if (myPedal.switchClosed) {
+          Serial.println(F("PRESSED (Trigger: CLOSED)"));
+        } else {
+          Serial.println(F("RELEASED (Trigger: OPEN)"));
+        }
+        
+        // 3. Laser Distance
+        Serial.print(F("[LASER DIST]   Current: "));
+        if (myPedal.laserDist == 150) {
+          Serial.print(F("---"));
+        } else {
+          Serial.print(myPedal.laserDist);
+        }
+        Serial.print(F(" mm | Last Released (Rest): "));
+        Serial.print(lastValidLaserDist);
+        Serial.println(F(" mm"));
+      }
+      
+      Serial.println(F("------------------------------------------------------------"));
+      
+      // 4. Battery RX
+      Serial.print(F("[BATTERY RX]   Raw ADC: "));
+      int rxRaw = analogRead(PIN_BAT);
+      Serial.print(rxRaw);
+      Serial.print(F(" | Voltage: "));
+      Serial.print((float)sR / 1000.0, 2);
+      Serial.print(F(" V | Status: "));
+      int rxPct = map(constrain((int)sR, 3100, 4100), 3100, 4100, 0, 100);
+      int rxBars = 0;
+      if (rxPct >= 80) rxBars = 5;
+      else if (rxPct >= 60) rxBars = 4;
+      else if (rxPct >= 40) rxBars = 3;
+      else if (rxPct >= 20) rxBars = 2;
+      else if (rxPct > 0) rxBars = 1;
+      Serial.print(F("["));
+      for (int i = 0; i < 5; i++) {
+        if (i < rxBars) Serial.print(F("|"));
+        else Serial.print(F("-"));
+      }
+      Serial.print(F("] "));
+      Serial.print(rxBars);
+      Serial.println(F("/5"));
+      
+      // 5. Battery TX
+      Serial.print(F("[BATTERY TX]   "));
+      if (currentState == SystemState::DISCONNECTED) {
+        Serial.println(F("Raw ADC: --- | Voltage: ---- V | Status: [-----] 0/5"));
+      } else {
+        Serial.print(F("Raw ADC: "));
+        Serial.print(myPedal.batV);
+        Serial.print(F(" | Voltage: "));
+        Serial.print((float)sT / 1000.0, 2);
+        Serial.print(F(" V | Status: "));
+        int txPct = map(constrain((int)sT, 3100, 4100), 3100, 4100, 0, 100);
+        int txBars = 0;
+        if (txPct >= 80) txBars = 5;
+        else if (txPct >= 60) txBars = 4;
+        else if (txPct >= 40) txBars = 3;
+        else if (txPct >= 20) txBars = 2;
+        else if (txPct > 0) txBars = 1;
+        Serial.print(F("["));
+        for (int i = 0; i < 5; i++) {
+          if (i < txBars) Serial.print(F("|"));
+          else Serial.print(F("-"));
+        }
+        Serial.print(F("] "));
+        Serial.print(txBars);
+        Serial.println(F("/5"));
+      }
+      
+      Serial.println(F("============================================================"));
     }
   }
 }
