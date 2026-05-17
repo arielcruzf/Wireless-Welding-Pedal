@@ -57,61 +57,45 @@ The assistant has been equipped with advanced visual capabilities to facilitate 
 
 ---
 
-## 7. Firmware Logical Architecture (Transmitter and Receiver)
+## 7. Firmware Logical Architecture (Release V1.1 Standard)
 Wireless communication between both LoRa32u4 boards operates under an ultra-optimized master-slave (unidirectional) system, where the **Transmitter** (Pedal) dictates physical status and the **Receiver** (Machine) executes power and displays visual status on the OLED screen.
 
-### 7.1. Trigger Flow and Action ("Dumb Node, Smart Controller" Architecture)
-*   **Transmitter (`transmitter.ino`):** Operates as a "Dumb Node". Pin 11 acts as the master switch. When closed (pedal pressed), it wakes up the VL53L4CD laser sensor. The transmitter applies internal mathematical filters to the raw laser reading and radiates this *unconstrained raw distance* (along with switch status) in a LoRa packet at maximum power (12dBm). By removing calibration limits from the pedal, the firmware becomes universal and safer. If the laser fails while pressing the pedal, it sends a safe fallback distance of 150mm (0% Amps). Total loop latency is under 10ms.
-*   **Receiver (`receiver.ino`):** Operates as the "Smart Controller" and constantly listens on the 433MHz frequency. Upon receiving a valid packet, if the "switch" is closed, it activates the MOSFETs (Relays). **Crucially, all pedal calibration (`DIST_REPOSO_MM` and `DIST_FONDO_MM`) is exclusively managed here.** It maps the received raw millimeters to a precise PWM output (0-244) to control the welder's DAC. This makes adjusting pedal sensitivity infinitely easier, as you only need to reprogram the receiver unit on the desk.
+### 7.1. Transmitter & Receiver File Directory
+*   **Transmitter Firmware:** Located in [transmitter_v1.1.ino](file:///Users/ARICF/Documents/PROYECTOS/WELDER%20PEDAL/FIRMWARE/transmitter_v1.1/transmitter_v1.1.ino).
+*   **Receiver Firmware:** Located in [receiver_v1.1.ino](file:///Users/ARICF/Documents/PROYECTOS/WELDER%20PEDAL/FIRMWARE/receiver_v1.1/receiver_v1.1.ino).
 
-### 7.2. Advanced Filtering Chain (Anti-Jitter)
-To ensure the welding arc is smooth and eliminate the inherent "tremor" of ToF sensors at close range, the transmitter applies three sequential mathematical filters before emitting the radio signal:
-1.  **Median Filter (3 Samples):** Collects the last 3 laser measurements and discards extreme peaks, keeping the central value. This clears visual "noise" almost instantaneously.
-2.  **EMA Filter (Exponential Moving Average - Factor 0.6):** Takes the median result and averages it mathematically with recent history. The 0.6 factor provides an "electric" and agile reaction to the foot, but with a stepped and smooth transition.
-3.  **Hysteresis Filter (Dead Zone):** If the resulting distance variation is 1mm or less, the code ignores the change. This locks the percentage number on the screen (and thus the PWM delivery) when the welder keeps their foot completely static.
+### 7.2. Trigger Flow and Action ("Dumb Node, Smart Controller" Architecture)
+*   **Transmitter (`transmitter_v1.1.ino`):** Pin 11 acts as the master limit switch. When closed (pedal pressed), it boots the VL53L4CD laser sensor. The transmitter applies raw Median & EMA filtering and compresses the raw distance (10-150mm) into a single byte (`0..254`). If standby is triggered, it radiates a farewell byte `255`. If the laser fails, it falls back to 150mm (mapped). Loop latency is under 10ms.
+*   **Receiver (`receiver_v1.1.ino`):** Constantly listens on 433MHz. When it receives a packet, it decodes `laserM` (if `255` -> Standby, else reconstructs millimeters using `map(laserM, 0, 254, 10, 150)`), unpacks flags for the physical switch, and scales battery raw readings. All welding calibration boundaries (`PEDAL_UP_MM` and `PEDAL_DOWN_MM`) are handled here, mapping the reconstructed distance to active PWM output (0-244).
 
-### 7.3. The 4 Ecosystem States (Failsafe Logic and OLED)
-The **Receiver** continuously evaluates data flow to ensure operator safety (Intelligent Failsafe) and represents it visually as follows:
+### 7.3. The 3-Byte Compressed Payload
+To minimize RF Time-on-Air (ToA) and reduce power consumption, Release V1.1 implements a highly compressed 3-byte payload structure:
+```cpp
+struct __attribute__((packed)) PedalDataPayload {
+  uint8_t laserM;  // 0..254 = mapped distance (10..150mm), 255 = Standby (999mm)
+  uint8_t flags;   // Bit 0: switchClosed (trigger), Bits 1..7: unused
+  uint8_t batRaw;  // Raw ADC battery reading divided by 2
+};
+```
+*   **Battery Scaling:** By dividing the 10-bit raw ADC reading (`250..400`) by 2 on the transmitter and multiplying by 2 on the receiver, we save 1 byte. This preserves 100% of the receiver's EMA smoothing (`sT`) and alarm triggers with a resolution loss of only ~15mV.
 
-1.  **CONNECTED (Steady Signal Bars):** The pedal is in use and the signal is stable. LoRa packets arrive smoothly (<200ms apart). The screen draws the actual signal strength from the antennas (with calibration adjusted to -115dBm to represent LoRa's high sensitivity).
-2.  **HOLDING (Flashing Signal Bars):** More than 200ms have passed since the last packet, but less than the safety limit. The system senses a micro-interference. It keeps the PWM power active temporarily to avoid shutting down the welding arc and warns visually by flashing the antenna bars.
-3.  **DISCONNECTED ('X' Icon):** The strict safety limit has passed (Failsafe = 1000ms) without receiving data from the pedal. The receiver instantly shuts off the Relays and cuts the PWM to 0%. The screen shows a large 'X' indicating the link has been lost or the pedal has been abruptly turned off.
-4.  **STANDBY (Flashing Hourglass):** If the pedal is not pressed for 5 minutes, the transmitter turns off its radio to save the LiPo battery. Before doing so, it sends a "Farewell Burst" (10 consecutive packets with the secret code `laserDist = 999`). 
-    *   Upon receiving `999`, the receiver enters safe sleep mode (PWM = 0) and replaces the antenna with an hourglass.
-    *   **Heartbeat Protocol:** To avoid "false standbys," the sleeping pedal wakes up every 60 seconds just to send 3 warning packets ("I'm still here") and goes back to sleep. If the machine spends more than 70 seconds without hearing this heartbeat, it assumes the pedal has run out of battery and exits Standby to show the 'X' for Disconnected.
+### 7.4. Advanced Filtering Chain (Anti-Jitter)
+To ensure the welding arc is completely smooth, the transmitter applies two sequential mathematical filters before encoding the payload:
+1.  **Median Filter (3 Samples):** Discards extreme transient spikes, keeping the central value to eliminate high-frequency noise.
+2.  **EMA Filter (Exponential Moving Average - Factor 0.15 / 0.85):** Averages the median result with recent history to deliver smooth transitions during active foot travel.
 
-### 7.4. Hardware Programming Limitation (Important)
-*   **Physical Switch Constraint:** If the physical power switch of either the **Transmitter** or the **Receiver** is in the **OFF** position, it is **impossible to upload code** via the Arduino IDE. The switch must be turned **ON** for the computer to recognize the USB COM port and allow the bootloader to flash new firmware.
+### 7.5. The 4 Ecosystem States (Failsafe Logic and OLED)
+The **Receiver** continuously evaluates data flow:
+1.  **CONNECTED (Steady Signal Bars):** Signal is stable. Packets arrive smoothly (<200ms apart).
+2.  **HOLDING (Flashing Signal Bars):** Packets are delayed (>200ms) but within safety limit. Holds PWM active to avoid killing the arc during minor interference.
+3.  **DISCONNECTED ('X' Icon):** Safety timeout passed (Failsafe = 1000ms) without receiving data. Instantly cuts relays and PWM to 0%.
+4.  **STANDBY (Flashing Hourglass):** After 3 minutes of inactive foot travel, the transmitter turns off its radio to save battery. It sends a Farewell Burst with `laserM = 255`. Upon receiving, the receiver enters safe sleep mode (PWM = 0) and dims the OLED brightness to minimum.
+    *   **Heartbeat Protocol:** The sleeping transmitter wakes up every 2 seconds via WDT, transmits a `laserM = 255` heartbeat packet, and sleeps again. If the receiver spends more than 10 seconds without a packet, it drops to the DISCONNECTED state.
 
-### 7.5. Arduino IDE Board Selection (Timing Accuracy)
-*   **F_CPU Mismatch:** The physical LoRa32u4 boards run at **8MHz (3.3V)**. If a 16MHz board (like "Arduino Leonardo") is selected in the Arduino IDE during firmware upload, all time-dependent functions (`millis()`, `delay()`) will execute at exactly half speed (e.g., a 5-minute standby will take 10 minutes).
-*   **Correct Board:** To ensure accurate timing and I2C speeds, always install the "Adafruit AVR Boards" package and select **"Adafruit Feather 32u4"** (which defaults to 8MHz) before compiling and uploading the code.
-
-### 7.6. Battery Alarm System (Buzzer)
-*   **Non-Blocking Audio:** The Receiver uses an asynchronous state machine (`BuzzerAlarm` class) on Pin 6 to emit audible warnings without interrupting the main processing loop or using blocking `delay()` functions.
-*   **Trigger Logic:** The system continuously monitors the battery percentages of BOTH the Transmitter and Receiver.
-    *   **10% Warning:** If either battery drops to $\le 10\%$, it emits 3 long buzzes (1s ON, 1s OFF). This alarm is triggered only once and won't re-trigger unless the battery climbs above 12% (hysteresis) and drops again.
-    *   **5% Critical Warning:** If either battery drops to $\le 5\%$, it emits 5 long buzzes (1s ON, 1s OFF). The hysteresis threshold to reset this alarm is 7%.
-
-### 7.7. Hardware Stabilization & Electrical Compatibility
-*   **I2C Speed Regulation:** The I2C clock speed is strictly set to standard `100000` (100kHz) on both boards to prevent transmission failure caused by weak physical pull-up resistors.
-*   **ADMUX Direct Registration:** Battery readings use direct hardware registers (`ADMUX = _BV(REFS0) | _BV(MUX4) | ...`) to acquire the microchip's internal 1.1V Bandgap reference, guaranteeing high precision under variable loads.
-
-### 7.8. Circular Battery Buffers, Auto-Lock & Multitrigger Resets (V1.0 Specs)
-*   **5-Sample Circular Buffers:** To eliminate telemetry jitter, the receiver collects battery ADC data into dedicated arrays (`rxSamples[5]`, `txSamples[5]`) and computes clean average values only after 5 samples have been acquired.
-*   **Battery Calibration Auto-Lock:** Replicating the laser TOF calibration structure, once 5 stable readings are gathered, the system calculates the final multiplier and locks it (`rxCalLocked`, `txCalLocked`) to present a perfectly static value on the serial monitor. This allows developers to easily copy and paste the values without real-time shifting.
-*   **Multitrigger Reset System:** The locked calibration and circular buffers are reset to zero under any of these four triggers, ensuring smooth re-calibration when needed:
-    1.  **Boot / Power-On:** Through the `setup()` initialization.
-    2.  **Wake-up:** When returning from standby state (`wakeSystem()`).
-    3.  **USB Hot-Plug (VBUS):** Dynamically reset on VBUS state change when connecting/disconnecting the physical USB cable.
-    4.  **Serial connection:** Instantly cleared when opening the serial connection.
-
-### 7.9. Dynamic USB Interruption Control (CPU-Lag Protection)
-*   **Interrupt Thrashing Prevention:** Unplugging the USB cable without detaching the ATmega32U4's virtual transceiver leaves the hardware controller in a continuous state-matching loop. This triggers endless internal interrupts, slowing down code execution by up to 100x.
-*   **Dynamic VBUS Detachment:** The firmware uses a global `lastVbus` state variable that monitors physical USB connection changes. In the exact millisecond VBUS goes LOW, it calls `USBDevice.detach()`, silencing all USB interrupts and guaranteeing 100% CPU speed for immediate debouncing and button checks (no lag on 2s power-off button).
-*   **Boot-Corrupt Avoidance:** Calling `USBDevice.detach()` too early inside `setup()` while the USB core is still configuring can corrupt the USB core state. The firmware avoids this by allowing the USB to fully initialize during the boot grace period, and then letting the first iteration of `loop()` cleanly and dynamically transition to detached state if no cable is plugged in.
-*   **Wake Synchronization:** Upon exiting deep sleep, the system forces `lastVbus = true`, prompting the unified dynamic state machine to reassess connection state immediately and detach/attach accordingly.
+### 7.6. Power Saving, USB Detach & Hardware Waking
+*   **Deep Sleep:** In deep sleep (>10 minutes inactive), the transmitter turns off LoRa, cuts laser power (XSHUT = LOW), disables the virtual USB transceiver (`USBCON = 0`), and powers down the MCU. It wakes exclusively via hardware pin change interrupts (**PCINT7**) on the pedal switch or mode button.
+*   **VBUS Hot-Plug re-enumeration:** Both firmware modules monitor VBUS (`USBSTA & (1 << VBUS)`). When USB is connected, they call `USBDevice.detach()`, wait 500ms, and call `USBDevice.attach()` to guarantee clean COM port re-enumeration for IDE flashing without locking.
 
 ---
-**Project Status:** ✅ Full Premium Interface | ✅ Global RAG System integrated | ✅ Automated CSV Ingestion | ✅ Stabilized and Optimized Firmware Release V1.0.
+**Project Status:** ✅ Full Premium Interface | ✅ Global RAG System integrated | ✅ Automated CSV Ingestion | ✅ Stabilized and Optimized Firmware Release V1.1.
 > **New Golden Rule:** The AI only learns what the developer validates via the `update ia` command, avoiding noise from unconfirmed interactions.
