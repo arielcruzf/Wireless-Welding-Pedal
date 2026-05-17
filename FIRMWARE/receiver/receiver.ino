@@ -15,18 +15,10 @@ const long FAILSAFE_LIMIT = 1000;        // Max wait time for signal
 const unsigned long DEEP_SLEEP_MIN = 10; // Minutes before Deep Sleep
 const int PEDAL_UP_MM = 60;              // Pedal up distance
 const int PEDAL_DOWN_MM = 17;            // Pedal down distance
-// Note: To calibrate these distance values, simply connect a USB cable, open
-// the Serial Monitor (115200 baud), and press/release the pedal 3 times. The
-// live console will automatically display the exact PEDAL_UP_MM and
-// PEDAL_DOWN_MM values for you to copy.
 const uint32_t RX_BATTERY_CALIBRATION =
     17850; // Physical battery voltage calibration for Receiver
 const uint32_t TX_BATTERY_CALIBRATION =
     17500; // Physical battery voltage calibration for Transmitter
-// Note: To calibrate these values, simply connect a USB cable and open
-// the Serial Monitor (115200 baud). The live telemetry console will
-// automatically display the exact RX_BATTERY_CALIBRATION and
-// TX_BATTERY_CALIBRATION values for you to copy and paste here.
 
 // =============================================================
 //                    HARDWARE PINOUT
@@ -55,20 +47,7 @@ PedalData myPedal;
 uint16_t localBatV = 0;
 int lastRSSI = 0, currentPWM = 0, currentPwmMin = 0;
 uint16_t lastValidLaserDist =
-    60;                // Última distancia láser registrada antes del apagado
-uint16_t calMin = 999; // Calibración dinámica: valor mínimo de distancia
-uint16_t calMax = 0;   // Calibración dinámica: valor máximo de distancia
-uint8_t calCycles = 0; // Number of complete pedal press/release cycles
-bool pedalWasPressed =
-    false; // Pedal press transition state tracker for calibration
-uint16_t rxSamples[5] = {0};
-uint8_t rxSampleIdx = 0;
-uint16_t txSamples[5] = {0};
-uint8_t txSampleIdx = 0;
-uint32_t rxCalLocked = 0;
-uint32_t txCalLocked = 0;
-uint8_t rxSampleCount = 0;
-uint8_t txSampleCount = 0;
+    60;                // Last laser distance recorded before shutdown
 unsigned long lastReception = 0, lastActivity = 0;
 float sT = 0,
       sR = 0; // Global battery smoothing variables to allow reset on wake
@@ -210,20 +189,7 @@ void setup() {
   currentState = SystemState::SEARCHING;
   lastReception = millis();
   lastActivity = millis();
-  calMin = 999;
-  calMax = 0;
-  calCycles = 0;
-  pedalWasPressed = false;
-  for (int i = 0; i < 5; i++) {
-    rxSamples[i] = 0;
-    txSamples[i] = 0;
-  }
-  rxSampleIdx = 0;
-  txSampleIdx = 0;
-  rxCalLocked = 0;
-  txCalLocked = 0;
-  rxSampleCount = 0;
-  txSampleCount = 0;
+  // Setup complete
 }
 
 // === 1. POWER MANAGEMENT ===
@@ -274,21 +240,7 @@ void wakeSystem() {
   lastReception = millis();
   lastActivity = millis();
 
-  // Clean reset calibration & battery buffers on wake
-  calMin = 999;
-  calMax = 0;
-  calCycles = 0;
-  pedalWasPressed = false;
-  for (int i = 0; i < 5; i++) {
-    rxSamples[i] = 0;
-    txSamples[i] = 0;
-  }
-  rxSampleIdx = 0;
-  txSampleIdx = 0;
-  rxCalLocked = 0;
-  txCalLocked = 0;
-  rxSampleCount = 0;
-  txSampleCount = 0;
+  // Wake complete
 }
 
 // === 2. MAIN LOOP ===
@@ -312,26 +264,7 @@ void loop() {
     return;
   }
 
-  // Reset calibration dynamically when Serial Monitor is opened
-  static bool lastSerialState = false;
-  bool currentSerialState = (bool)Serial;
-  if (currentSerialState && !lastSerialState) {
-    calMin = 999;
-    calMax = 0;
-    calCycles = 0;
-    pedalWasPressed = false;
-    for (int i = 0; i < 5; i++) {
-      rxSamples[i] = 0;
-      txSamples[i] = 0;
-    }
-    rxSampleIdx = 0;
-    txSampleIdx = 0;
-    rxCalLocked = 0;
-    txCalLocked = 0;
-    rxSampleCount = 0;
-    txSampleCount = 0;
-  }
-  lastSerialState = currentSerialState;
+  // Main button check
 
   bool btn = (digitalRead(PIN_MODE) == LOW);
   static bool btnL = false;
@@ -361,34 +294,6 @@ void loop() {
     outputsEnabled = !isStandby;
     if (isStandby)
       activateFailsafe();
-    else {
-      if (myPedal.batV > 0) {
-        txSamples[txSampleIdx] = myPedal.batV;
-        txSampleIdx = (txSampleIdx + 1) % 5;
-        if (txSampleCount < 5)
-          txSampleCount++;
-      }
-      if (myPedal.laserDist != 150 && myPedal.laserDist != 999) {
-        if (myPedal.laserDist < calMin)
-          calMin = myPedal.laserDist;
-        if (myPedal.laserDist > calMax)
-          calMax = myPedal.laserDist;
-
-        if (myPedal.switchClosed) {
-          lastValidLaserDist = myPedal.laserDist;
-        }
-
-        // Robust TOF-based cycle counting (independent of physical switch)
-        if (myPedal.laserDist < 30) {
-          pedalWasPressed = true;
-        } else if (myPedal.laserDist > 45) {
-          if (pedalWasPressed) {
-            calCycles++;
-            pedalWasPressed = false;
-          }
-        }
-      }
-    }
     currentState = isStandby ? SystemState::STANDBY : SystemState::CONNECTED;
   }
 
@@ -397,30 +302,13 @@ void loop() {
     lastActivity = millis();
   }
 
-  // Detección de conexión USB en caliente para el IDE (resetea calibración al
-  // conectar/desconectar)
+  // Hot-plug USB detection for IDE
   static bool lastVbusRx = false;
   bool currentVbusRx = (USBSTA & (1 << VBUS));
-  if (currentVbusRx != lastVbusRx) {
-    if (currentVbusRx) {
-      USBDevice.detach();
-      delay(500);
-      USBDevice.attach();
-    }
-    calMin = 999;
-    calMax = 0;
-    calCycles = 0;
-    pedalWasPressed = false;
-    for (int i = 0; i < 5; i++) {
-      rxSamples[i] = 0;
-      txSamples[i] = 0;
-    }
-    rxSampleIdx = 0;
-    txSampleIdx = 0;
-    rxCalLocked = 0;
-    txCalLocked = 0;
-    rxSampleCount = 0;
-    txSampleCount = 0;
+  if (currentVbusRx && !lastVbusRx) {
+    USBDevice.detach();
+    delay(500);
+    USBDevice.attach();
   }
   lastVbusRx = currentVbusRx;
 
@@ -489,71 +377,7 @@ void loop() {
     }
   }
 
-  // --- TELEMETRY & CALIBRATION SERIAL LOGS ---
-  static unsigned long lastSerialPrint = 0;
-  if (Serial && millis() - lastSerialPrint >= 500) {
-    lastSerialPrint = millis();
-
-    Serial.println(F("\nPEDAL CALIBRATION: PRESS AND RELEASE THE PEDAL ALL THE "
-                     "WAY DOWN 3 TIMES"));
-
-    if (calCycles < 3) {
-      Serial.print(F("PEDAL_UP_MM = ---; // (Progress: "));
-      Serial.print(calCycles);
-      Serial.println(F("/3)"));
-      Serial.println(F("PEDAL_DOWN_MM = ---;"));
-    } else {
-      Serial.print(F("PEDAL_UP_MM = "));
-      Serial.print(calMax);
-      Serial.println(F("; // [OK]"));
-      Serial.print(F("PEDAL_DOWN_MM = "));
-      Serial.print(calMin + 1);
-      Serial.println(F("; // [OK] (+1mm buffer)"));
-    }
-
-    Serial.println();
-    Serial.println(F("BATTERY CALIBRATION:"));
-
-    // Lock battery calibration values once 5 stable samples are collected
-    if (rxSampleCount >= 5 && rxCalLocked == 0) {
-      uint32_t sumRx = 0;
-      for (int i = 0; i < 5; i++)
-        sumRx += rxSamples[i];
-      rxCalLocked = (4230UL * 1000UL) / (sumRx / 5);
-    }
-    if (txSampleCount >= 5 && txCalLocked == 0 &&
-        currentState != SystemState::DISCONNECTED) {
-      uint32_t sumTx = 0;
-      for (int i = 0; i < 5; i++)
-        sumTx += txSamples[i];
-      txCalLocked = (4180UL * 1000UL) / (sumTx / 5);
-    }
-
-    if (rxCalLocked > 0) {
-      Serial.print(F("RX_BATTERY_CALIBRATION = "));
-      Serial.print(rxCalLocked);
-      Serial.println(F("; // [OK]"));
-    } else {
-      Serial.print(F("RX_BATTERY_CALIBRATION = ---; // (Averaging: "));
-      Serial.print(rxSampleCount);
-      Serial.println(F("/5)"));
-    }
-
-    if (currentState != SystemState::DISCONNECTED) {
-      if (txCalLocked > 0) {
-        Serial.print(F("TX_BATTERY_CALIBRATION = "));
-        Serial.print(txCalLocked);
-        Serial.println(F("; // [OK]"));
-      } else {
-        Serial.print(F("TX_BATTERY_CALIBRATION = ---; // (Averaging: "));
-        Serial.print(txSampleCount);
-        Serial.println(F("/5)"));
-      }
-    }
-
-    Serial.println();
-    Serial.println(F("------------------------------------"));
-  }
+  // Telemetry removed
 }
 
 // === 3. HARDWARE CONTROL ===
@@ -570,14 +394,7 @@ void readBatteries() {
   analogRead(PIN_BAT);
   delay(5); // Electrical quiet-period: prevents SPI/I2C noise from corrupting
             // high-impedance ADC sample capacitor
-  int rxRaw = analogRead(PIN_BAT);
-  if (rxRaw > 0) {
-    rxSamples[rxSampleIdx] = rxRaw;
-    rxSampleIdx = (rxSampleIdx + 1) % 5;
-    if (rxSampleCount < 5)
-      rxSampleCount++;
-  }
-  localBatV = (uint16_t)(((uint32_t)rxRaw * RX_BATTERY_CALIBRATION) / 1000UL);
+  localBatV = (uint16_t)(((uint32_t)analogRead(PIN_BAT) * RX_BATTERY_CALIBRATION) / 1000UL);
 }
 
 void activateFailsafe() {
@@ -661,16 +478,6 @@ void updateDisplay() {
     sR = localBatV;
   sR = 0.02 * localBatV + 0.98 * sR;
 
-  // --- CALIBRATION MODE (Uncomment to use with Multimeter) ---
-  // Serial.print("RX Raw ADC: ");
-  // Serial.print(analogRead(PIN_BAT));
-  // Serial.print(" | RX mV: ");
-  // Serial.print(sR);
-  // Serial.print(" || TX Raw ADC: ");
-  // Serial.print(myPedal.batV);
-  // Serial.print(" | TX mV: ");
-  // Serial.println(sT);
-  // ----------------------------------------------------
 
   auto drawBat = [&](int y, const char *L, float val, bool disc) {
     bool isTX = (strcmp(L, "TX") == 0);

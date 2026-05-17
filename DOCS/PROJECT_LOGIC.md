@@ -93,6 +93,25 @@ The **Receiver** continuously evaluates data flow to ensure operator safety (Int
     *   **10% Warning:** If either battery drops to $\le 10\%$, it emits 3 long buzzes (1s ON, 1s OFF). This alarm is triggered only once and won't re-trigger unless the battery climbs above 12% (hysteresis) and drops again.
     *   **5% Critical Warning:** If either battery drops to $\le 5\%$, it emits 5 long buzzes (1s ON, 1s OFF). The hysteresis threshold to reset this alarm is 7%.
 
+### 7.7. Hardware Stabilization & Electrical Compatibility
+*   **I2C Speed Regulation:** The I2C clock speed is strictly set to standard `100000` (100kHz) on both boards to prevent transmission failure caused by weak physical pull-up resistors.
+*   **ADMUX Direct Registration:** Battery readings use direct hardware registers (`ADMUX = _BV(REFS0) | _BV(MUX4) | ...`) to acquire the microchip's internal 1.1V Bandgap reference, guaranteeing high precision under variable loads.
+
+### 7.8. Circular Battery Buffers, Auto-Lock & Multitrigger Resets (V1.0 Specs)
+*   **5-Sample Circular Buffers:** To eliminate telemetry jitter, the receiver collects battery ADC data into dedicated arrays (`rxSamples[5]`, `txSamples[5]`) and computes clean average values only after 5 samples have been acquired.
+*   **Battery Calibration Auto-Lock:** Replicating the laser TOF calibration structure, once 5 stable readings are gathered, the system calculates the final multiplier and locks it (`rxCalLocked`, `txCalLocked`) to present a perfectly static value on the serial monitor. This allows developers to easily copy and paste the values without real-time shifting.
+*   **Multitrigger Reset System:** The locked calibration and circular buffers are reset to zero under any of these four triggers, ensuring smooth re-calibration when needed:
+    1.  **Boot / Power-On:** Through the `setup()` initialization.
+    2.  **Wake-up:** When returning from standby state (`wakeSystem()`).
+    3.  **USB Hot-Plug (VBUS):** Dynamically reset on VBUS state change when connecting/disconnecting the physical USB cable.
+    4.  **Serial connection:** Instantly cleared when opening the serial connection.
+
+### 7.9. Dynamic USB Interruption Control (CPU-Lag Protection)
+*   **Interrupt Thrashing Prevention:** Unplugging the USB cable without detaching the ATmega32U4's virtual transceiver leaves the hardware controller in a continuous state-matching loop. This triggers endless internal interrupts, slowing down code execution by up to 100x.
+*   **Dynamic VBUS Detachment:** The firmware uses a global `lastVbus` state variable that monitors physical USB connection changes. In the exact millisecond VBUS goes LOW, it calls `USBDevice.detach()`, silencing all USB interrupts and guaranteeing 100% CPU speed for immediate debouncing and button checks (no lag on 2s power-off button).
+*   **Boot-Corrupt Avoidance:** Calling `USBDevice.detach()` too early inside `setup()` while the USB core is still configuring can corrupt the USB core state. The firmware avoids this by allowing the USB to fully initialize during the boot grace period, and then letting the first iteration of `loop()` cleanly and dynamically transition to detached state if no cable is plugged in.
+*   **Wake Synchronization:** Upon exiting deep sleep, the system forces `lastVbus = true`, prompting the unified dynamic state machine to reassess connection state immediately and detach/attach accordingly.
+
 ---
-**Project Status:** ✅ Full Premium Interface | ✅ Global RAG System integrated | ✅ Automated CSV Ingestion | ✅ Stabilized and Optimized Firmware v10.4.
+**Project Status:** ✅ Full Premium Interface | ✅ Global RAG System integrated | ✅ Automated CSV Ingestion | ✅ Stabilized and Optimized Firmware Release V1.0.
 > **New Golden Rule:** The AI only learns what the developer validates via the `update ia` command, avoiding noise from unconfirmed interactions.
