@@ -252,9 +252,16 @@ void loop() {
       wakeSystem();
       while (digitalRead(PIN_MODE) == LOW)
         delay(10);
-    }
-    return;
   }
+
+  // Reset calibration dynamically when Serial Monitor is opened
+  static bool lastSerialState = false;
+  bool currentSerialState = (bool)Serial;
+  if (currentSerialState && !lastSerialState) {
+    calMin = 999;
+    calMax = 0;
+  }
+  lastSerialState = currentSerialState;
 
   bool btn = (digitalRead(PIN_MODE) == LOW);
   static bool btnL = false;
@@ -416,6 +423,7 @@ void loop() {
       Serial.print(F("               const int PEDAL_DOWN_MM = "));
       if (calMin == 999) Serial.println(F("---;"));
       else { Serial.print(calMin + 1); Serial.println(F("; // (Included +1mm hardware dead-zone buffer)")); }
+      Serial.println(F("               (To reset calibration, simply close and reopen this Serial Monitor)"));
       
       Serial.println(F("------------------------------------------------------------"));
       
