@@ -393,9 +393,6 @@ void loop() {
       Serial.print(F("[LINK STATUS]  "));
       if (currentState == SystemState::DISCONNECTED) {
         Serial.println(F("DISCONNECTED"));
-        Serial.print(F("[LASER DIST]   Current: --- mm | Last Released (Rest): "));
-        if (lastValidLaserDist == 150) Serial.println(F("--- mm"));
-        else { Serial.print(lastValidLaserDist); Serial.println(F(" mm")); }
       } else {
         if (currentState == SystemState::CONNECTED) {
           Serial.print(F("CONNECTED (RSSI: "));
@@ -404,17 +401,6 @@ void loop() {
         } else if (currentState == SystemState::HOLDING) {
           Serial.println(F("HOLDING (interference warning)"));
         }
-        
-        // 3. Laser Distance
-        Serial.print(F("[LASER DIST]   Current: "));
-        if (myPedal.laserDist == 150) {
-          Serial.print(F("---"));
-        } else {
-          Serial.print(myPedal.laserDist);
-        }
-        Serial.print(F(" mm | Last Released (Rest): "));
-        Serial.print(lastValidLaserDist);
-        Serial.println(F(" mm"));
       }
       
       // 3b. Dynamic Pedal Calibration Helper
@@ -430,63 +416,24 @@ void loop() {
       Serial.println(F("------------------------------------------------------------"));
       
       // 4. Battery RX
-      Serial.print(F("[BATTERY RX]   Raw ADC: "));
+      Serial.print(F("[BATTERY RX]   "));
       int rxRaw = analogRead(PIN_BAT);
-      Serial.print(rxRaw);
-      Serial.print(F(" | Voltage: "));
-      Serial.print((float)sR / 1000.0, 2);
-      Serial.print(F(" V | Status: "));
-      int rxPct = map(constrain((int)sR, 3100, 4100), 3100, 4100, 0, 100);
-      int rxBars = 0;
-      if (rxPct >= 80) rxBars = 5;
-      else if (rxPct >= 60) rxBars = 4;
-      else if (rxPct >= 40) rxBars = 3;
-      else if (rxPct >= 20) rxBars = 2;
-      else if (rxPct > 0) rxBars = 1;
-      Serial.print(F("["));
-      for (int i = 0; i < 5; i++) {
-        if (i < rxBars) Serial.print(F("|"));
-        else Serial.print(F("-"));
-      }
-      Serial.print(F("] "));
-      Serial.print(rxBars);
-      Serial.println(F("/5"));
       if (rxRaw > 0) {
-        Serial.print(F("               >>> RX_BATTERY_CALIBRATION = "));
+        Serial.print(F("const uint32_t RX_BATTERY_CALIBRATION = "));
         Serial.print((4230UL * 1000UL) / rxRaw);
-        Serial.println(F("UL"));
+        Serial.println(F("UL;"));
+      } else {
+        Serial.println(F("const uint32_t RX_BATTERY_CALIBRATION = ---;"));
       }
       
       // 5. Battery TX
       Serial.print(F("[BATTERY TX]   "));
-      if (currentState == SystemState::DISCONNECTED) {
-        Serial.println(F("Raw ADC: --- | Voltage: ---- V | Status: [-----] 0/5"));
+      if (currentState == SystemState::DISCONNECTED || myPedal.batV == 0) {
+        Serial.println(F("const uint32_t TX_BATTERY_CALIBRATION = ---;"));
       } else {
-        Serial.print(F("Raw ADC: "));
-        Serial.print(myPedal.batV);
-        Serial.print(F(" | Voltage: "));
-        Serial.print((float)sT / 1000.0, 2);
-        Serial.print(F(" V | Status: "));
-        int txPct = map(constrain((int)sT, 3100, 4100), 3100, 4100, 0, 100);
-        int txBars = 0;
-        if (txPct >= 80) txBars = 5;
-        else if (txPct >= 60) txBars = 4;
-        else if (txPct >= 40) txBars = 3;
-        else if (txPct >= 20) txBars = 2;
-        else if (txPct > 0) txBars = 1;
-        Serial.print(F("["));
-        for (int i = 0; i < 5; i++) {
-          if (i < txBars) Serial.print(F("|"));
-          else Serial.print(F("-"));
-        }
-        Serial.print(F("] "));
-        Serial.print(txBars);
-        Serial.println(F("/5"));
-        if (myPedal.batV > 0) {
-          Serial.print(F("               >>> TX_BATTERY_CALIBRATION = "));
-          Serial.print((4180UL * 1000UL) / myPedal.batV);
-          Serial.println(F("UL"));
-        }
+        Serial.print(F("const uint32_t TX_BATTERY_CALIBRATION = "));
+        Serial.print((4180UL * 1000UL) / myPedal.batV);
+        Serial.println(F("UL;"));
       }
       
       Serial.println(F("============================================================"));
