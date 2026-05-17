@@ -10,9 +10,9 @@ This document outlines the mandatory operational and development rules that the 
 
 ---
 
-## 2. Git & GitHub Push Policy
-*   **Strict Control:** **DO NOT** push any code or commits to GitHub automatically.
-*   **Explicit Approval:** The assistant is allowed to perform local commits (`git commit`) to keep track of changes, but **MUST NOT** execute `git push` to the remote repository (e.g., `origin main`) unless the user explicitly requests it (e.g., "Súbelo a GitHub", "Push origin main", etc.).
+## 2. Git & GitHub Update Policy
+*   **Absolute Strict Control:** **DO NOT** create any local commits (`git commit`) and **DO NOT** push to the remote repository (`git push`) automatically.
+*   **Explicit Command Only:** The assistant must completely freeze all Git tracking. Local history updates and remote pushes must ONLY be executed when the user explicitly commands it (e.g., "actualizar github", "actualizar git hub local", "push", etc.).
 
 ---
 

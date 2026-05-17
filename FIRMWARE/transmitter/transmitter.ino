@@ -12,8 +12,8 @@
 // =============================================================
 //                    USER CONFIGURATION
 // =============================================================
-const unsigned long STANDBY_MIN = 1;     // Minutes before Laser Standby
-const unsigned long DEEP_SLEEP_MIN = 2; // Minutes before Deep Sleep
+const unsigned long STANDBY_MIN = 3;     // Minutes before Laser Standby
+const unsigned long DEEP_SLEEP_MIN = 10; // Minutes before Deep Sleep
 const unsigned long WAKE_UP_SAFE_TIME =
     1; // SECONDS to ignore trigger after wake up
 const int LORA_TX_POWER =

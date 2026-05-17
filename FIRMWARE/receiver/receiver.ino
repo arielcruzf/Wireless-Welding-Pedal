@@ -12,12 +12,13 @@
 //                    USER CONFIGURATION
 // =============================================================
 const long FAILSAFE_LIMIT = 1000;        // Max wait time for signal
-const unsigned long DEEP_SLEEP_MIN = 2; // Minutes before Deep Sleep
+const unsigned long DEEP_SLEEP_MIN = 10; // Minutes before Deep Sleep
 const int PEDAL_UP_MM = 60;              // Pedal up distance
 const int PEDAL_DOWN_MM = 17;            // Pedal down distance
-// Note: To calibrate these distance values, simply connect a USB cable, open the
-// Serial Monitor (115200 baud), and press/release the pedal 3 times. The live console
-// will automatically display the exact PEDAL_UP_MM and PEDAL_DOWN_MM values for you to copy.
+// Note: To calibrate these distance values, simply connect a USB cable, open
+// the Serial Monitor (115200 baud), and press/release the pedal 3 times. The
+// live console will automatically display the exact PEDAL_UP_MM and
+// PEDAL_DOWN_MM values for you to copy.
 const uint32_t RX_BATTERY_CALIBRATION =
     17850; // Physical battery voltage calibration for Receiver
 const uint32_t TX_BATTERY_CALIBRATION =
@@ -39,7 +40,7 @@ const uint32_t TX_BATTERY_CALIBRATION =
 #define PIN_BUZZER 6
 
 #define EEPROM_ADDR_MODE 0
-#define PWM_MAX_VAL 244                   // System hardware limit for active welding PWM
+#define PWM_MAX_VAL 244 // System hardware limit for active welding PWM
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
 
@@ -53,19 +54,34 @@ struct __attribute__((packed)) PedalData {
 PedalData myPedal;
 uint16_t localBatV = 0;
 int lastRSSI = 0, currentPWM = 0, currentPwmMin = 0;
-uint16_t lastValidLaserDist = 60; // Última distancia láser registrada antes del apagado
-uint16_t calMin = 999;             // Calibración dinámica: valor mínimo de distancia
-uint16_t calMax = 0;               // Calibración dinámica: valor máximo de distancia
-uint8_t calCycles = 0;             // Number of complete pedal press/release cycles
-bool pedalWasPressed = false;      // Pedal press transition state tracker for calibration
-float avgRxAdc = 0; // Promedio dinámico (EMA) de batería Receptor
-float avgTxAdc = 0; // Promedio dinámico (EMA) de batería Transmisor
+uint16_t lastValidLaserDist =
+    60;                // Última distancia láser registrada antes del apagado
+uint16_t calMin = 999; // Calibración dinámica: valor mínimo de distancia
+uint16_t calMax = 0;   // Calibración dinámica: valor máximo de distancia
+uint8_t calCycles = 0; // Number of complete pedal press/release cycles
+bool pedalWasPressed =
+    false; // Pedal press transition state tracker for calibration
+uint16_t rxSamples[5] = {0};
+uint8_t rxSampleIdx = 0;
+uint16_t txSamples[5] = {0};
+uint8_t txSampleIdx = 0;
+uint32_t rxCalLocked = 0;
+uint32_t txCalLocked = 0;
+uint8_t rxSampleCount = 0;
+uint8_t txSampleCount = 0;
 unsigned long lastReception = 0, lastActivity = 0;
 float sT = 0,
       sR = 0; // Global battery smoothing variables to allow reset on wake
 bool systemLocked = true, isStandby = false, outputsEnabled = false,
      powerState = true;
-enum class SystemState { STARTING, SEARCHING, STANDBY, CONNECTED, DISCONNECTED, HOLDING };
+enum class SystemState {
+  STARTING,
+  SEARCHING,
+  STANDBY,
+  CONNECTED,
+  DISCONNECTED,
+  HOLDING
+};
 SystemState currentState = SystemState::STARTING;
 
 // ASSETS
@@ -102,9 +118,13 @@ byte currentMode = 0;
 
 class OutputPin {
   uint8_t pin;
+
 public:
   OutputPin(uint8_t p) : pin(p) {}
-  void begin() { pinMode(pin, OUTPUT); writeDigital(LOW); }
+  void begin() {
+    pinMode(pin, OUTPUT);
+    writeDigital(LOW);
+  }
   void writeDigital(bool state) { digitalWrite(pin, state); }
   void writePWM(int val) { analogWrite(pin, val); }
 };
@@ -118,9 +138,10 @@ class BuzzerAlarm {
 public:
   BuzzerAlarm(uint8_t p) : buzzerPin(p) {}
   void begin() { buzzerPin.begin(); }
-  
+
   void trigger(int count) {
-    if (buzzesRemaining > 0) return; // Don't override ongoing alarm
+    if (buzzesRemaining > 0)
+      return;                    // Don't override ongoing alarm
     buzzesRemaining = count * 2; // Each buzz is an ON and an OFF phase
     isBuzzing = true;
     buzzerPin.writeDigital(HIGH);
@@ -189,6 +210,20 @@ void setup() {
   currentState = SystemState::SEARCHING;
   lastReception = millis();
   lastActivity = millis();
+  calMin = 999;
+  calMax = 0;
+  calCycles = 0;
+  pedalWasPressed = false;
+  for (int i = 0; i < 5; i++) {
+    rxSamples[i] = 0;
+    txSamples[i] = 0;
+  }
+  rxSampleIdx = 0;
+  txSampleIdx = 0;
+  rxCalLocked = 0;
+  txCalLocked = 0;
+  rxSampleCount = 0;
+  txSampleCount = 0;
 }
 
 // === 1. POWER MANAGEMENT ===
@@ -204,10 +239,11 @@ void sleepSystem() {
   display.ssd1306_command(SSD1306_DISPLAYOFF);
   LoRa.sleep();
 
-  // Disable USB controller completely before sleep (notifies host PC of clean disconnect)
-  #if defined(USBCON)
+// Disable USB controller completely before sleep (notifies host PC of clean
+// disconnect)
+#if defined(USBCON)
   USBCON = 0;
-  #endif
+#endif
 
   ADCSRA &= ~(1 << ADEN); // Disable ADC safely by clearing only the Enable bit
                           // (preserves prescaler)
@@ -223,10 +259,10 @@ void wakeSystem() {
   sT = 0; // Reset battery smoothing to snap immediately to real values on wake
   sR = 0;
 
-  // Re-initialize USB controller cleanly from scratch
-  #if defined(USBCON)
+// Re-initialize USB controller cleanly from scratch
+#if defined(USBCON)
   USBDevice.attach();
-  #endif
+#endif
 
   digitalWrite(PIN_LED, HIGH);
   display.ssd1306_command(SSD1306_DISPLAYON);
@@ -237,6 +273,22 @@ void wakeSystem() {
   currentState = SystemState::SEARCHING;
   lastReception = millis();
   lastActivity = millis();
+
+  // Clean reset calibration & battery buffers on wake
+  calMin = 999;
+  calMax = 0;
+  calCycles = 0;
+  pedalWasPressed = false;
+  for (int i = 0; i < 5; i++) {
+    rxSamples[i] = 0;
+    txSamples[i] = 0;
+  }
+  rxSampleIdx = 0;
+  txSampleIdx = 0;
+  rxCalLocked = 0;
+  txCalLocked = 0;
+  rxSampleCount = 0;
+  txSampleCount = 0;
 }
 
 // === 2. MAIN LOOP ===
@@ -268,8 +320,16 @@ void loop() {
     calMax = 0;
     calCycles = 0;
     pedalWasPressed = false;
-    avgRxAdc = 0;
-    avgTxAdc = 0;
+    for (int i = 0; i < 5; i++) {
+      rxSamples[i] = 0;
+      txSamples[i] = 0;
+    }
+    rxSampleIdx = 0;
+    txSampleIdx = 0;
+    rxCalLocked = 0;
+    txCalLocked = 0;
+    rxSampleCount = 0;
+    txSampleCount = 0;
   }
   lastSerialState = currentSerialState;
 
@@ -302,23 +362,29 @@ void loop() {
     if (isStandby)
       activateFailsafe();
     else {
-      if (Serial) {
-        if (myPedal.batV > 0) {
-          if (avgTxAdc == 0) avgTxAdc = myPedal.batV;
-          else avgTxAdc = (0.2 * myPedal.batV) + (0.8 * avgTxAdc);
+      if (myPedal.batV > 0) {
+        txSamples[txSampleIdx] = myPedal.batV;
+        txSampleIdx = (txSampleIdx + 1) % 5;
+        if (txSampleCount < 5)
+          txSampleCount++;
+      }
+      if (myPedal.laserDist != 150 && myPedal.laserDist != 999) {
+        if (myPedal.laserDist < calMin)
+          calMin = myPedal.laserDist;
+        if (myPedal.laserDist > calMax)
+          calMax = myPedal.laserDist;
+
+        if (myPedal.switchClosed) {
+          lastValidLaserDist = myPedal.laserDist;
         }
-        if (myPedal.laserDist != 150 && myPedal.laserDist != 999) {
-          if (myPedal.laserDist < calMin) calMin = myPedal.laserDist;
-          if (myPedal.laserDist > calMax) calMax = myPedal.laserDist;
-          
-          if (myPedal.switchClosed) {
-            lastValidLaserDist = myPedal.laserDist;
-            if (pedalWasPressed) {
-              calCycles++;
-              pedalWasPressed = false;
-            }
-          } else {
-            pedalWasPressed = true;
+
+        // Robust TOF-based cycle counting (independent of physical switch)
+        if (myPedal.laserDist < 30) {
+          pedalWasPressed = true;
+        } else if (myPedal.laserDist > 45) {
+          if (pedalWasPressed) {
+            calCycles++;
+            pedalWasPressed = false;
           }
         }
       }
@@ -331,13 +397,30 @@ void loop() {
     lastActivity = millis();
   }
 
-  // Detección de conexión USB en caliente para el IDE
+  // Detección de conexión USB en caliente para el IDE (resetea calibración al
+  // conectar/desconectar)
   static bool lastVbusRx = false;
   bool currentVbusRx = (USBSTA & (1 << VBUS));
-  if (currentVbusRx && !lastVbusRx) {
-    USBDevice.detach();
-    delay(500);
-    USBDevice.attach();
+  if (currentVbusRx != lastVbusRx) {
+    if (currentVbusRx) {
+      USBDevice.detach();
+      delay(500);
+      USBDevice.attach();
+    }
+    calMin = 999;
+    calMax = 0;
+    calCycles = 0;
+    pedalWasPressed = false;
+    for (int i = 0; i < 5; i++) {
+      rxSamples[i] = 0;
+      txSamples[i] = 0;
+    }
+    rxSampleIdx = 0;
+    txSampleIdx = 0;
+    rxCalLocked = 0;
+    txCalLocked = 0;
+    rxSampleCount = 0;
+    txSampleCount = 0;
   }
   lastVbusRx = currentVbusRx;
 
@@ -379,7 +462,9 @@ void loop() {
   static bool alarm10Triggered = false;
   static bool alarm5Triggered = false;
 
-  int pTX = (currentState != SystemState::DISCONNECTED) ? map(constrain((int)sT, 3100, 4100), 3100, 4100, 0, 100) : 100;
+  int pTX = (currentState != SystemState::DISCONNECTED)
+                ? map(constrain((int)sT, 3100, 4100), 3100, 4100, 0, 100)
+                : 100;
   int pRX = map(constrain((int)sR, 3100, 4100), 3100, 4100, 0, 100);
   int lowestBat = min(pTX, pRX);
 
@@ -405,83 +490,77 @@ void loop() {
   }
 
   // --- TELEMETRY & CALIBRATION SERIAL LOGS ---
-  if (Serial) {
-    static unsigned long lastSerialPrint = 0;
-    if (millis() - lastSerialPrint >= 500) {
-      lastSerialPrint = millis();
-      
-      Serial.println(F("\n============================================================"));
-      Serial.println(F("           WIRELESS WELDER PEDAL TELEMETRY & CALIBRATION"));
-      Serial.println(F("============================================================"));
-      
-      // 1. Link Status
-      Serial.print(F("[LINK STATUS]  "));
-      if (currentState == SystemState::DISCONNECTED) {
-        Serial.println(F("DISCONNECTED"));
-      } else {
-        if (currentState == SystemState::CONNECTED) {
-          Serial.print(F("CONNECTED (RSSI: "));
-          Serial.print(lastRSSI);
-          Serial.println(F(" dBm)"));
-        } else if (currentState == SystemState::HOLDING) {
-          Serial.println(F("HOLDING (interference warning)"));
-        }
-      }
-      
-      // 3b. Dynamic Pedal Calibration Helper
-      Serial.println(F("               PEDAL CALIBRATION: PRESS AND RELEASE THE PEDAL ALL THE WAY DOWN 3 TIMES"));
-      Serial.print(F("               const int PEDAL_UP_MM = "));
-      if (calMax == 0) Serial.print(F("---;"));
-      else { Serial.print(calMax); Serial.print(F(";")); }
-      if (calCycles < 3) {
-        Serial.print(F(" // Progress: "));
-        Serial.print(calCycles);
-        Serial.println(F("/3"));
-      } else {
-        Serial.println();
-      }
+  static unsigned long lastSerialPrint = 0;
+  if (Serial && millis() - lastSerialPrint >= 500) {
+    lastSerialPrint = millis();
 
-      Serial.print(F("               const int PEDAL_DOWN_MM = "));
-      if (calMin == 999) Serial.print(F("---;"));
-      else { Serial.print(calMin + 1); Serial.print(F(";")); }
-      if (calCycles < 3) {
-        Serial.println();
-      } else {
-        Serial.println(F(" // (Included +1mm hardware dead-zone buffer)"));
-      }
-      Serial.println(F("               (To reset calibration, simply close and reopen this Serial Monitor)"));
-      
-      Serial.println(F("------------------------------------------------------------"));
-      
-      // 4. Battery RX
-      Serial.print(F("[BATTERY RX]   "));
-      if (avgRxAdc > 0) {
-        Serial.print(F("const uint32_t RX_BATTERY_CALIBRATION = "));
-        Serial.print((4230UL * 1000UL) / (uint16_t)avgRxAdc);
-        Serial.println(F(";"));
-      } else {
-        Serial.println(F("const uint32_t RX_BATTERY_CALIBRATION = ---;"));
-      }
-      
-      // 5. Battery TX
-      Serial.print(F("[BATTERY TX]   "));
-      if (currentState == SystemState::DISCONNECTED || avgTxAdc == 0) {
-        Serial.println(F("const uint32_t TX_BATTERY_CALIBRATION = ---;"));
-      } else {
-        Serial.print(F("const uint32_t TX_BATTERY_CALIBRATION = "));
-        Serial.print((4180UL * 1000UL) / (uint16_t)avgTxAdc);
-        Serial.println(F(";"));
-      }
-      
-      Serial.println(F("============================================================"));
+    Serial.println(F("\nPEDAL CALIBRATION: PRESS AND RELEASE THE PEDAL ALL THE "
+                     "WAY DOWN 3 TIMES"));
+
+    if (calCycles < 3) {
+      Serial.print(F("PEDAL_UP_MM = ---; // (Progress: "));
+      Serial.print(calCycles);
+      Serial.println(F("/3)"));
+      Serial.println(F("PEDAL_DOWN_MM = ---;"));
+    } else {
+      Serial.print(F("PEDAL_UP_MM = "));
+      Serial.print(calMax);
+      Serial.println(F("; // [OK]"));
+      Serial.print(F("PEDAL_DOWN_MM = "));
+      Serial.print(calMin + 1);
+      Serial.println(F("; // [OK] (+1mm buffer)"));
     }
+
+    Serial.println();
+    Serial.println(F("BATTERY CALIBRATION:"));
+
+    // Lock battery calibration values once 5 stable samples are collected
+    if (rxSampleCount >= 5 && rxCalLocked == 0) {
+      uint32_t sumRx = 0;
+      for (int i = 0; i < 5; i++)
+        sumRx += rxSamples[i];
+      rxCalLocked = (4230UL * 1000UL) / (sumRx / 5);
+    }
+    if (txSampleCount >= 5 && txCalLocked == 0 &&
+        currentState != SystemState::DISCONNECTED) {
+      uint32_t sumTx = 0;
+      for (int i = 0; i < 5; i++)
+        sumTx += txSamples[i];
+      txCalLocked = (4180UL * 1000UL) / (sumTx / 5);
+    }
+
+    if (rxCalLocked > 0) {
+      Serial.print(F("RX_BATTERY_CALIBRATION = "));
+      Serial.print(rxCalLocked);
+      Serial.println(F("; // [OK]"));
+    } else {
+      Serial.print(F("RX_BATTERY_CALIBRATION = ---; // (Averaging: "));
+      Serial.print(rxSampleCount);
+      Serial.println(F("/5)"));
+    }
+
+    if (currentState != SystemState::DISCONNECTED) {
+      if (txCalLocked > 0) {
+        Serial.print(F("TX_BATTERY_CALIBRATION = "));
+        Serial.print(txCalLocked);
+        Serial.println(F("; // [OK]"));
+      } else {
+        Serial.print(F("TX_BATTERY_CALIBRATION = ---; // (Averaging: "));
+        Serial.print(txSampleCount);
+        Serial.println(F("/5)"));
+      }
+    }
+
+    Serial.println();
+    Serial.println(F("------------------------------------"));
   }
 }
 
 // === 3. HARDWARE CONTROL ===
 void readBatteries() {
   static unsigned long lastBatRead = 0;
-  if (millis() - lastBatRead < 500) return;
+  if (millis() - lastBatRead < 500)
+    return;
   lastBatRead = millis();
 
   ADMUX = _BV(REFS0) | _BV(MUX4) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1);
@@ -489,11 +568,14 @@ void readBatteries() {
   while (bit_is_set(ADCSRA, ADSC))
     ;
   analogRead(PIN_BAT);
-  delay(5); // Electrical quiet-period: prevents SPI/I2C noise from corrupting high-impedance ADC sample capacitor
+  delay(5); // Electrical quiet-period: prevents SPI/I2C noise from corrupting
+            // high-impedance ADC sample capacitor
   int rxRaw = analogRead(PIN_BAT);
-  if (Serial && rxRaw > 0) {
-    if (avgRxAdc == 0) avgRxAdc = rxRaw;
-    else avgRxAdc = (0.2 * rxRaw) + (0.8 * avgRxAdc);
+  if (rxRaw > 0) {
+    rxSamples[rxSampleIdx] = rxRaw;
+    rxSampleIdx = (rxSampleIdx + 1) % 5;
+    if (rxSampleCount < 5)
+      rxSampleCount++;
   }
   localBatV = (uint16_t)(((uint32_t)rxRaw * RX_BATTERY_CALIBRATION) / 1000UL);
 }
@@ -606,11 +688,16 @@ void updateDisplay() {
     } else {
       int p = map(constrain((int)val, 3100, 4100), 3100, 4100, 0, 100);
       int b = 0;
-      if (p >= 80) b = 5;
-      else if (p >= 60) b = 4;
-      else if (p >= 40) b = 3;
-      else if (p >= 20) b = 2;
-      else if (p > 0) b = 1;
+      if (p >= 80)
+        b = 5;
+      else if (p >= 60)
+        b = 4;
+      else if (p >= 40)
+        b = 3;
+      else if (p >= 20)
+        b = 2;
+      else if (p > 0)
+        b = 1;
       for (int i = 0; i < 5; i++)
         if (i < b && !(p <= 10 && i == 0 && (millis() / 500 % 2)))
           display.fillRect(x_b + half + 4 + i * 5, y + 4, 3, h - 8,
