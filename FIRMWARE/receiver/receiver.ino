@@ -58,46 +58,8 @@ uint16_t calMin = 999;             // Calibración dinámica: valor mínimo de d
 uint16_t calMax = 0;               // Calibración dinámica: valor máximo de distancia
 uint8_t calCycles = 0;             // Number of complete pedal press/release cycles
 bool pedalWasPressed = false;      // Pedal press transition state tracker for calibration
-uint16_t rxAdcHistory[5] = {0};    // Circular buffer for receiver battery ADC readings
-uint16_t txAdcHistory[5] = {0};    // Circular buffer for transmitter battery ADC readings
-uint8_t rxAdcIdx = 0;              // Buffer index for receiver
-uint8_t txAdcIdx = 0;              // Buffer index for transmitter
-uint8_t rxAdcCount = 0;            // Number of valid readings collected for receiver
-uint8_t txAdcCount = 0;            // Number of valid readings collected for transmitter
-
-void addRxAdc(uint16_t raw) {
-  if (raw > 0) {
-    rxAdcHistory[rxAdcIdx] = raw;
-    rxAdcIdx = (rxAdcIdx + 1) % 5;
-    if (rxAdcCount < 5) rxAdcCount++;
-  }
-}
-
-uint16_t getRxAdcAverage() {
-  if (rxAdcCount == 0) return 0;
-  uint32_t sum = 0;
-  for (uint8_t i = 0; i < rxAdcCount; i++) {
-    sum += rxAdcHistory[i];
-  }
-  return sum / rxAdcCount;
-}
-
-void addTxAdc(uint16_t raw) {
-  if (raw > 0) {
-    txAdcHistory[txAdcIdx] = raw;
-    txAdcIdx = (txAdcIdx + 1) % 5;
-    if (txAdcCount < 5) txAdcCount++;
-  }
-}
-
-uint16_t getTxAdcAverage() {
-  if (txAdcCount == 0) return 0;
-  uint32_t sum = 0;
-  for (uint8_t i = 0; i < txAdcCount; i++) {
-    sum += txAdcHistory[i];
-  }
-  return sum / txAdcCount;
-}
+float avgRxAdc = 0; // Promedio dinámico (EMA) de batería Receptor
+float avgTxAdc = 0; // Promedio dinámico (EMA) de batería Transmisor
 unsigned long lastReception = 0, lastActivity = 0;
 float sT = 0,
       sR = 0; // Global battery smoothing variables to allow reset on wake
@@ -306,10 +268,8 @@ void loop() {
     calMax = 0;
     calCycles = 0;
     pedalWasPressed = false;
-    rxAdcCount = 0;
-    txAdcCount = 0;
-    memset(rxAdcHistory, 0, sizeof(rxAdcHistory));
-    memset(txAdcHistory, 0, sizeof(txAdcHistory));
+    avgRxAdc = 0;
+    avgTxAdc = 0;
   }
   lastSerialState = currentSerialState;
 
@@ -342,21 +302,24 @@ void loop() {
     if (isStandby)
       activateFailsafe();
     else {
-      if (myPedal.batV > 0) {
-        addTxAdc(myPedal.batV);
-      }
-      if (myPedal.laserDist != 150 && myPedal.laserDist != 999) {
-        if (myPedal.laserDist < calMin) calMin = myPedal.laserDist;
-        if (myPedal.laserDist > calMax) calMax = myPedal.laserDist;
-        
-        if (myPedal.switchClosed) {
-          lastValidLaserDist = myPedal.laserDist;
-          if (pedalWasPressed) {
-            calCycles++;
-            pedalWasPressed = false;
+      if (Serial) {
+        if (myPedal.batV > 0) {
+          if (avgTxAdc == 0) avgTxAdc = myPedal.batV;
+          else avgTxAdc = (0.2 * myPedal.batV) + (0.8 * avgTxAdc);
+        }
+        if (myPedal.laserDist != 150 && myPedal.laserDist != 999) {
+          if (myPedal.laserDist < calMin) calMin = myPedal.laserDist;
+          if (myPedal.laserDist > calMax) calMax = myPedal.laserDist;
+          
+          if (myPedal.switchClosed) {
+            lastValidLaserDist = myPedal.laserDist;
+            if (pedalWasPressed) {
+              calCycles++;
+              pedalWasPressed = false;
+            }
+          } else {
+            pedalWasPressed = true;
           }
-        } else {
-          pedalWasPressed = true;
         }
       }
     }
@@ -468,20 +431,23 @@ void loop() {
       // 3b. Dynamic Pedal Calibration Helper
       Serial.println(F("               PEDAL CALIBRATION: PRESS AND RELEASE THE PEDAL ALL THE WAY DOWN 3 TIMES"));
       Serial.print(F("               const int PEDAL_UP_MM = "));
+      if (calMax == 0) Serial.print(F("---;"));
+      else { Serial.print(calMax); Serial.print(F(";")); }
       if (calCycles < 3) {
-        Serial.print(F("---; // Press/release 3 times (Progress: "));
+        Serial.print(F(" // Progress: "));
         Serial.print(calCycles);
-        Serial.println(F("/3)"));
+        Serial.println(F("/3"));
       } else {
-        Serial.print(calMax);
-        Serial.println(F(";"));
+        Serial.println();
       }
+
       Serial.print(F("               const int PEDAL_DOWN_MM = "));
+      if (calMin == 999) Serial.print(F("---;"));
+      else { Serial.print(calMin + 1); Serial.print(F(";")); }
       if (calCycles < 3) {
-        Serial.println(F("---;"));
+        Serial.println();
       } else {
-        Serial.print(calMin + 1);
-        Serial.println(F("; // (Included +1mm hardware dead-zone buffer)"));
+        Serial.println(F(" // (Included +1mm hardware dead-zone buffer)"));
       }
       Serial.println(F("               (To reset calibration, simply close and reopen this Serial Monitor)"));
       
@@ -489,10 +455,9 @@ void loop() {
       
       // 4. Battery RX
       Serial.print(F("[BATTERY RX]   "));
-      uint16_t avgRxAdc = getRxAdcAverage();
       if (avgRxAdc > 0) {
         Serial.print(F("const uint32_t RX_BATTERY_CALIBRATION = "));
-        Serial.print((4230UL * 1000UL) / avgRxAdc);
+        Serial.print((4230UL * 1000UL) / (uint16_t)avgRxAdc);
         Serial.println(F(";"));
       } else {
         Serial.println(F("const uint32_t RX_BATTERY_CALIBRATION = ---;"));
@@ -500,12 +465,11 @@ void loop() {
       
       // 5. Battery TX
       Serial.print(F("[BATTERY TX]   "));
-      uint16_t avgTxAdc = getTxAdcAverage();
       if (currentState == SystemState::DISCONNECTED || avgTxAdc == 0) {
         Serial.println(F("const uint32_t TX_BATTERY_CALIBRATION = ---;"));
       } else {
         Serial.print(F("const uint32_t TX_BATTERY_CALIBRATION = "));
-        Serial.print((4180UL * 1000UL) / avgTxAdc);
+        Serial.print((4180UL * 1000UL) / (uint16_t)avgTxAdc);
         Serial.println(F(";"));
       }
       
@@ -527,8 +491,9 @@ void readBatteries() {
   analogRead(PIN_BAT);
   delay(5); // Electrical quiet-period: prevents SPI/I2C noise from corrupting high-impedance ADC sample capacitor
   int rxRaw = analogRead(PIN_BAT);
-  if (rxRaw > 0) {
-    addRxAdc(rxRaw);
+  if (Serial && rxRaw > 0) {
+    if (avgRxAdc == 0) avgRxAdc = rxRaw;
+    else avgRxAdc = (0.2 * rxRaw) + (0.8 * avgRxAdc);
   }
   localBatV = (uint16_t)(((uint32_t)rxRaw * RX_BATTERY_CALIBRATION) / 1000UL);
 }
