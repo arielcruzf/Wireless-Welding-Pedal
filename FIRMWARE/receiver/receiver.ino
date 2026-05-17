@@ -51,6 +51,8 @@ PedalData myPedal;
 uint16_t localBatV = 0;
 int lastRSSI = 0, currentPWM = 0, currentPwmMin = 0;
 uint16_t lastValidLaserDist = 60; // Última distancia láser registrada antes del apagado
+uint16_t calMin = 999;             // Calibración dinámica: valor mínimo de distancia
+uint16_t calMax = 0;               // Calibración dinámica: valor máximo de distancia
 unsigned long lastReception = 0, lastActivity = 0;
 float sT = 0,
       sR = 0; // Global battery smoothing variables to allow reset on wake
@@ -279,8 +281,10 @@ void loop() {
     outputsEnabled = !isStandby;
     if (isStandby)
       activateFailsafe();
-    else if (myPedal.switchClosed && myPedal.laserDist != 150) {
+    else if (myPedal.switchClosed && myPedal.laserDist != 150 && myPedal.laserDist != 999) {
       lastValidLaserDist = myPedal.laserDist;
+      if (myPedal.laserDist < calMin) calMin = myPedal.laserDist;
+      if (myPedal.laserDist > calMax) calMax = myPedal.laserDist;
     }
     currentState = isStandby ? SystemState::STANDBY : SystemState::CONNECTED;
   }
@@ -400,6 +404,15 @@ void loop() {
         Serial.print(lastValidLaserDist);
         Serial.println(F(" mm"));
       }
+      
+      // 3b. Dynamic Pedal Calibration Helper
+      Serial.println(F("               >>> PEDAL CALIBRATION: PRESS AND RELEASE THE PEDAL ALL THE WAY DOWN 3 TIMES"));
+      Serial.print(F("               const int PEDAL_UP_MM = "));
+      if (calMax == 0) Serial.println(F("---;"));
+      else { Serial.print(calMax); Serial.println(F(";")); }
+      Serial.print(F("               const int PEDAL_DOWN_MM = "));
+      if (calMin == 999) Serial.println(F("---;"));
+      else { Serial.print(calMin); Serial.println(F(";")); }
       
       Serial.println(F("------------------------------------------------------------"));
       
