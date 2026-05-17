@@ -20,9 +20,10 @@ const uint32_t RX_CALIBRATION =
     17850UL; // Calibración de voltaje física para Receptor (4.23V exacto)
 const uint32_t TX_CALIBRATION =
     17500UL; // Calibración de voltaje física para Transmisor (4.18V exacto)
-// Note: To physically calibrate these values with a multimeter,
-// uncomment the "CALIBRATION MODE" block at the end of the updateDisplay()
-// function (around line 351) and check the Serial Monitor.
+// Note: To physically calibrate these values with a multimeter, simply
+// connect a USB cable and open the Serial Monitor (115200 baud). The live 
+// telemetry console will automatically compute and display the exact 
+// RX_CALIBRATION and TX_CALIBRATION values for you to copy and paste here.
 
 // =============================================================
 //                    HARDWARE PINOUT
