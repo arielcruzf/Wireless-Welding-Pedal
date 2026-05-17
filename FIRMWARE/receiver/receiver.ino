@@ -435,6 +435,14 @@ void loop() {
       Serial.print(F("] "));
       Serial.print(rxBars);
       Serial.println(F("/5"));
+      if (rxRaw > 0) {
+        Serial.print(F("               >>> CALIBRATION SUGGESTION: "));
+        Serial.print(F("If multimeter is 4.23V -> RX_CALIBRATION = "));
+        Serial.print((4230UL * 1000UL) / rxRaw);
+        Serial.print(F("UL | If 4.20V -> "));
+        Serial.print((4200UL * 1000UL) / rxRaw);
+        Serial.println(F("UL"));
+      }
       
       // 5. Battery TX
       Serial.print(F("[BATTERY TX]   "));
@@ -461,6 +469,14 @@ void loop() {
         Serial.print(F("] "));
         Serial.print(txBars);
         Serial.println(F("/5"));
+        if (myPedal.batV > 0) {
+          Serial.print(F("               >>> CALIBRATION SUGGESTION: "));
+          Serial.print(F("If multimeter is 4.18V -> TX_CALIBRATION = "));
+          Serial.print((4180UL * 1000UL) / myPedal.batV);
+          Serial.print(F("UL | If 4.15V -> "));
+          Serial.print((4150UL * 1000UL) / myPedal.batV);
+          Serial.println(F("UL"));
+        }
       }
       
       Serial.println(F("============================================================"));
