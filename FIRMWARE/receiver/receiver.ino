@@ -16,14 +16,14 @@ const unsigned long DEEP_SLEEP_MIN = 2; // Minutes before Deep Sleep
 const int PEDAL_UP_MM = 60;              // Pedal up distance
 const int PEDAL_DOWN_MM = 17;            // Pedal down distance
 const int PWM_MAX_VAL = 244;             // Max PWM output value
-const uint32_t RX_CALIBRATION =
-    17850UL; // Calibración de voltaje física para Receptor (4.23V exacto)
-const uint32_t TX_CALIBRATION =
-    17500UL; // Calibración de voltaje física para Transmisor (4.18V exacto)
+const uint32_t RX_BATTERY_CALIBRATION =
+    17850UL; // Physical battery voltage calibration for Receiver
+const uint32_t TX_BATTERY_CALIBRATION =
+    17500UL; // Physical battery voltage calibration for Transmitter
 // Note: To physically calibrate these values with a multimeter, simply
 // connect a USB cable and open the Serial Monitor (115200 baud). The live 
 // telemetry console will automatically compute and display the exact 
-// RX_CALIBRATION and TX_CALIBRATION values for you to copy and paste here.
+// RX_BATTERY_CALIBRATION and TX_BATTERY_CALIBRATION values for you to copy and paste here.
 
 // =============================================================
 //                    HARDWARE PINOUT
@@ -406,7 +406,7 @@ void loop() {
       }
       
       // 3b. Dynamic Pedal Calibration Helper
-      Serial.println(F("               >>> PEDAL CALIBRATION: PRESS AND RELEASE THE PEDAL ALL THE WAY DOWN 3 TIMES"));
+      Serial.println(F("               PEDAL CALIBRATION: PRESS AND RELEASE THE PEDAL ALL THE WAY DOWN 3 TIMES"));
       Serial.print(F("               const int PEDAL_UP_MM = "));
       if (calMax == 0) Serial.println(F("---;"));
       else { Serial.print(calMax); Serial.println(F(";")); }
@@ -439,7 +439,7 @@ void loop() {
       Serial.print(rxBars);
       Serial.println(F("/5"));
       if (rxRaw > 0) {
-        Serial.print(F("               >>> RX_CALIBRATION = "));
+        Serial.print(F("               >>> RX_BATTERY_CALIBRATION = "));
         Serial.print((4230UL * 1000UL) / rxRaw);
         Serial.println(F("UL"));
       }
@@ -470,7 +470,7 @@ void loop() {
         Serial.print(txBars);
         Serial.println(F("/5"));
         if (myPedal.batV > 0) {
-          Serial.print(F("               >>> TX_CALIBRATION = "));
+          Serial.print(F("               >>> TX_BATTERY_CALIBRATION = "));
           Serial.print((4180UL * 1000UL) / myPedal.batV);
           Serial.println(F("UL"));
         }
@@ -492,8 +492,8 @@ void readBatteries() {
   while (bit_is_set(ADCSRA, ADSC))
     ;
   analogRead(PIN_BAT);
-  delay(5); // Quiet-period eléctrico: evita que el ruido de SPI/I2C corrompa la carga del ADC de alta impedancia
-  localBatV = (uint16_t)((analogRead(PIN_BAT) * RX_CALIBRATION) / 1000UL);
+  delay(5); // Electrical quiet-period: prevents SPI/I2C noise from corrupting high-impedance ADC sample capacitor
+  localBatV = (uint16_t)((analogRead(PIN_BAT) * RX_BATTERY_CALIBRATION) / 1000UL);
 }
 
 void activateFailsafe() {
@@ -568,7 +568,7 @@ void updateDisplay() {
 
   if (currentState != SystemState::DISCONNECTED) {
     uint16_t tV =
-        (uint16_t)(((uint32_t)myPedal.batV * TX_CALIBRATION) / 1000UL);
+        (uint16_t)(((uint32_t)myPedal.batV * TX_BATTERY_CALIBRATION) / 1000UL);
     if (sT == 0)
       sT = tV;
     sT = 0.02 * tV + 0.98 * sT;
