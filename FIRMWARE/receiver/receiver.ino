@@ -20,10 +20,10 @@ const uint32_t RX_BATTERY_CALIBRATION =
     17850UL; // Physical battery voltage calibration for Receiver
 const uint32_t TX_BATTERY_CALIBRATION =
     17500UL; // Physical battery voltage calibration for Transmitter
-// Note: To physically calibrate these values with a multimeter, simply
-// connect a USB cable and open the Serial Monitor (115200 baud). The live 
-// telemetry console will automatically compute and display the exact 
-// RX_BATTERY_CALIBRATION and TX_BATTERY_CALIBRATION values for you to copy and paste here.
+// Note: To calibrate these values, simply connect a USB cable and open
+// the Serial Monitor (115200 baud). The live telemetry console will
+// automatically display the exact RX_BATTERY_CALIBRATION and
+// TX_BATTERY_CALIBRATION values for you to copy and paste here.
 
 // =============================================================
 //                    HARDWARE PINOUT
