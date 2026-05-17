@@ -42,6 +42,7 @@ Diagnostic tools to ensure the AI's "truth" matches physical reality.
 
 ## 5. Deployment Pipeline (CI/CD)
 *   **Versioning:** GitHub acts as the central hub for code, RAG logic, and 3D models.
+*   **Passwordless Git Authentication (macOS Keychain & PAT):** The local repository is configured with a permanent GitHub Personal Access Token (PAT Classic - No Expiration) embedded in the remote URL. This allows the local Mac to authenticate, push commits, and update release tags (`V1.0`, `V0.9`) seamlessly without ever prompting the developer for a username or password.
 *   **Edge Hosting (Vercel):** Continuous deployment with high-availability infrastructure and serverless function execution for the chat.
 
 ## 6. Diagramming & Presentation Skills (LLM Output)
