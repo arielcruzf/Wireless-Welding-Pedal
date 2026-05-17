@@ -86,6 +86,12 @@ The **Receiver** continuously evaluates data flow to ensure operator safety (Int
 *   **F_CPU Mismatch:** The physical LoRa32u4 boards run at **8MHz (3.3V)**. If a 16MHz board (like "Arduino Leonardo") is selected in the Arduino IDE during firmware upload, all time-dependent functions (`millis()`, `delay()`) will execute at exactly half speed (e.g., a 5-minute standby will take 10 minutes).
 *   **Correct Board:** To ensure accurate timing and I2C speeds, always install the "Adafruit AVR Boards" package and select **"Adafruit Feather 32u4"** (which defaults to 8MHz) before compiling and uploading the code.
 
+### 7.6. Battery Alarm System (Buzzer)
+*   **Non-Blocking Audio:** The Receiver uses an asynchronous state machine (`BuzzerAlarm` class) on Pin 6 to emit audible warnings without interrupting the main processing loop or using blocking `delay()` functions.
+*   **Trigger Logic:** The system continuously monitors the battery percentages of BOTH the Transmitter and Receiver.
+    *   **10% Warning:** If either battery drops to $\le 10\%$, it emits 3 long buzzes (1s ON, 1s OFF). This alarm is triggered only once and won't re-trigger unless the battery climbs above 12% (hysteresis) and drops again.
+    *   **5% Critical Warning:** If either battery drops to $\le 5\%$, it emits 5 long buzzes (1s ON, 1s OFF). The hysteresis threshold to reset this alarm is 7%.
+
 ---
 **Project Status:** ✅ Full Premium Interface | ✅ Global RAG System integrated | ✅ Automated CSV Ingestion | ✅ Stabilized and Optimized Firmware v10.4.
 > **New Golden Rule:** The AI only learns what the developer validates via the `update ia` command, avoiding noise from unconfirmed interactions.

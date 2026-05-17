@@ -71,6 +71,8 @@ A severe hardware incompatibility was discovered between the ATmega32u4 chip and
 *   **I2C Pinout:**
     *   **SDA:** Pin 2
     *   **SCK / SCL:** Pin 3
+*   **Audio / Alarm:**
+    *   **Buzzer:** Pin 6 (Receiver only)
 *   **GND Isolation:** The receiver's MOSFET #2 is used to disconnect the DAC module's GND, guaranteeing 0.00V at rest.
 
 ---

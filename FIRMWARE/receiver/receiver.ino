@@ -12,14 +12,14 @@
 //                    USER CONFIGURATION
 // =============================================================
 const long FAILSAFE_LIMIT = 1000;        // Max wait time for signal
-const unsigned long DEEP_SLEEP_MIN = 10; // Minutes before Deep Sleep
+const unsigned long DEEP_SLEEP_MIN = 2; // Minutes before Deep Sleep
 const int PEDAL_UP_MM = 60;              // Pedal up distance
 const int PEDAL_DOWN_MM = 17;            // Pedal down distance
 const int PWM_MAX_VAL = 244;             // Max PWM output value
 const uint32_t RX_CALIBRATION =
-    15000UL; // Internal voltage calibration (Theoretical)
+    17850UL; // Calibración de voltaje física para Receptor (4.23V exacto)
 const uint32_t TX_CALIBRATION =
-    15000UL; // Transmitter voltage calibration (Theoretical)
+    17500UL; // Calibración de voltaje física para Transmisor (4.18V exacto)
 // Note: To physically calibrate these values with a multimeter,
 // uncomment the "CALIBRATION MODE" block at the end of the updateDisplay()
 // function (around line 351) and check the Serial Monitor.
@@ -33,6 +33,7 @@ const uint32_t TX_CALIBRATION =
 #define PIN_BAT A0
 #define PIN_MODE 0
 #define PIN_LED A9
+#define PIN_BUZZER 6
 
 #define EEPROM_ADDR_MODE 0
 #define SCREEN_WIDTH 128
@@ -53,7 +54,8 @@ float sT = 0,
       sR = 0; // Global battery smoothing variables to allow reset on wake
 bool systemLocked = true, isStandby = false, outputsEnabled = false,
      powerState = true;
-String currentStatus = "STARTING";
+enum class SystemState { STARTING, SEARCHING, STANDBY, CONNECTED, DISCONNECTED, HOLDING };
+SystemState currentState = SystemState::STARTING;
 
 // ASSETS
 const unsigned char PROGMEM antenna_bitmap[] = {
@@ -87,15 +89,68 @@ const unsigned char PROGMEM icon_RX[] = {
 
 byte currentMode = 0;
 
+class OutputPin {
+  uint8_t pin;
+public:
+  OutputPin(uint8_t p) : pin(p) {}
+  void begin() { pinMode(pin, OUTPUT); writeDigital(LOW); }
+  void writeDigital(bool state) { digitalWrite(pin, state); }
+  void writePWM(int val) { analogWrite(pin, val); }
+};
+
+class BuzzerAlarm {
+  OutputPin buzzerPin;
+  int buzzesRemaining = 0;
+  bool isBuzzing = false;
+  unsigned long lastToggleTime = 0;
+
+public:
+  BuzzerAlarm(uint8_t p) : buzzerPin(p) {}
+  void begin() { buzzerPin.begin(); }
+  
+  void trigger(int count) {
+    if (buzzesRemaining > 0) return; // Don't override ongoing alarm
+    buzzesRemaining = count * 2; // Each buzz is an ON and an OFF phase
+    isBuzzing = true;
+    buzzerPin.writeDigital(HIGH);
+    lastToggleTime = millis();
+    buzzesRemaining--;
+  }
+
+  void update() {
+    if (buzzesRemaining > 0) {
+      if (millis() - lastToggleTime >= 1000) {
+        lastToggleTime = millis();
+        isBuzzing = !isBuzzing;
+        buzzerPin.writeDigital(isBuzzing);
+        buzzesRemaining--;
+        if (buzzesRemaining == 0) {
+          buzzerPin.writeDigital(LOW);
+          isBuzzing = false;
+        }
+      }
+    } else if (isBuzzing) {
+      buzzerPin.writeDigital(LOW);
+      isBuzzing = false;
+    }
+  }
+};
+
+OutputPin rel1(PIN_REL1);
+OutputPin rel2(PIN_REL2);
+OutputPin pwmOut(PIN_PWM);
+BuzzerAlarm sysBuzzer(PIN_BUZZER);
+
 // === 0. INITIALIZATION ===
 void setup() {
   delay(3000); // USB Grace Period for IDE recognition
   Serial.begin(115200);
   pinMode(PIN_LED, OUTPUT);
   digitalWrite(PIN_LED, HIGH);
-  pinMode(PIN_PWM, OUTPUT);
-  pinMode(PIN_REL1, OUTPUT);
-  pinMode(PIN_REL2, OUTPUT);
+  pwmOut.begin();
+  rel1.begin();
+  rel2.begin();
+  sysBuzzer.begin();
   pinMode(PIN_MODE, INPUT_PULLUP);
   pinMode(5, OUTPUT);
   digitalWrite(5, LOW);
@@ -120,7 +175,7 @@ void setup() {
   LoRa.setPins(8, 4, 7);
   if (LoRa.begin(433E6))
     LoRa.setSyncWord(0xF1);
-  currentStatus = "SEARCHING";
+  currentState = SystemState::SEARCHING;
   lastReception = millis();
   lastActivity = millis();
 }
@@ -168,7 +223,7 @@ void wakeSystem() {
   if (currentMode > 4)
     currentMode = 0;
   currentPwmMin = currentMode * 61;
-  currentStatus = "SEARCHING";
+  currentState = SystemState::SEARCHING;
   lastReception = millis();
   lastActivity = millis();
 }
@@ -222,7 +277,7 @@ void loop() {
     outputsEnabled = !isStandby;
     if (isStandby)
       activateFailsafe();
-    currentStatus = isStandby ? "STANDBY" : "CONNECTED";
+    currentState = isStandby ? SystemState::STANDBY : SystemState::CONNECTED;
   }
 
   // Keep system awake if button is pressed (USB does not prevent sleep)
@@ -256,40 +311,74 @@ void loop() {
     outputsEnabled = false;
     systemLocked = true;
     isStandby = false;
-    currentStatus = "DISCONNECTED";
+    currentState = SystemState::DISCONNECTED;
   } else if (!isStandby && dt > 200) {
-    currentStatus = "HOLDING";
+    currentState = SystemState::HOLDING;
   }
 
   if (outputsEnabled) {
     currentPWM = map(constrain(myPedal.laserDist, PEDAL_DOWN_MM, PEDAL_UP_MM),
                      PEDAL_UP_MM, PEDAL_DOWN_MM, currentPwmMin, PWM_MAX_VAL);
-    analogWrite(PIN_PWM, currentPWM);
-    digitalWrite(PIN_REL1, myPedal.switchClosed);
-    digitalWrite(PIN_REL2, myPedal.switchClosed);
+    pwmOut.writePWM(currentPWM);
+    rel1.writeDigital(myPedal.switchClosed);
+    rel2.writeDigital(myPedal.switchClosed);
   }
 
   readBatteries();
   updateDisplay();
-  delay(1);
+
+  sysBuzzer.update();
+
+  // Battery Alarm Logic
+  static bool alarm10Triggered = false;
+  static bool alarm5Triggered = false;
+
+  int pTX = (currentState != SystemState::DISCONNECTED) ? map(constrain((int)sT, 3100, 4100), 3100, 4100, 0, 100) : 100;
+  int pRX = map(constrain((int)sR, 3100, 4100), 3100, 4100, 0, 100);
+  int lowestBat = min(pTX, pRX);
+
+  if (lowestBat <= 5) {
+    if (!alarm5Triggered) {
+      sysBuzzer.trigger(5);
+      alarm5Triggered = true;
+      alarm10Triggered = true;
+    }
+  } else if (lowestBat <= 10) {
+    if (!alarm10Triggered) {
+      sysBuzzer.trigger(3);
+      alarm10Triggered = true;
+    }
+    if (lowestBat > 7) {
+      alarm5Triggered = false;
+    }
+  } else {
+    if (lowestBat > 12) {
+      alarm10Triggered = false;
+      alarm5Triggered = false;
+    }
+  }
 }
 
 // === 3. HARDWARE CONTROL ===
 void readBatteries() {
+  static unsigned long lastBatRead = 0;
+  if (millis() - lastBatRead < 500) return;
+  lastBatRead = millis();
+
   ADMUX = _BV(REFS0) | _BV(MUX4) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1);
   ADCSRA |= _BV(ADSC);
   while (bit_is_set(ADCSRA, ADSC))
     ;
   analogRead(PIN_BAT);
-  delay(5);
+  delay(5); // Quiet-period eléctrico: evita que el ruido de SPI/I2C corrompa la carga del ADC de alta impedancia
   localBatV = (uint16_t)((analogRead(PIN_BAT) * RX_CALIBRATION) / 1000UL);
 }
 
 void activateFailsafe() {
   currentPWM = 0;
-  analogWrite(PIN_PWM, 0);
-  digitalWrite(PIN_REL1, LOW);
-  digitalWrite(PIN_REL2, LOW);
+  pwmOut.writePWM(0);
+  rel1.writeDigital(false);
+  rel2.writeDigital(false);
 }
 
 // === 4. UI & DISPLAY ===
@@ -338,7 +427,7 @@ void updateDisplay() {
   if (!isStandby || (millis() % 1500 < 1000))
     display.drawBitmap(x_b + (half - 15) / 2, 34 + (h - 17) / 2, antenna_bitmap,
                        15, 17, SSD1306_WHITE);
-  if (currentStatus == "DISCONNECTED") {
+  if (currentState == SystemState::DISCONNECTED) {
     display.setTextColor(SSD1306_WHITE);
     display.setTextSize(1);
     display.setCursor(x_b + half + 7, 34 + (h - 8) / 2 + 1);
@@ -355,23 +444,26 @@ void updateDisplay() {
                          map(i, 0, 4, 4, 20), SSD1306_WHITE);
   }
 
-  if (currentStatus != "DISCONNECTED") {
+  if (currentState != SystemState::DISCONNECTED) {
     uint16_t tV =
         (uint16_t)(((uint32_t)myPedal.batV * TX_CALIBRATION) / 1000UL);
     if (sT == 0)
       sT = tV;
-    sT = 0.05 * tV + 0.95 * sT;
+    sT = 0.02 * tV + 0.98 * sT;
   }
   if (sR == 0)
     sR = localBatV;
-  sR = 0.05 * localBatV + 0.95 * sR;
+  sR = 0.02 * localBatV + 0.98 * sR;
 
   // --- CALIBRATION MODE (Uncomment to use with Multimeter) ---
-  // Serial.print("RX (Receiver) says: ");
+  // Serial.print("RX Raw ADC: ");
+  // Serial.print(analogRead(PIN_BAT));
+  // Serial.print(" | RX mV: ");
   // Serial.print(sR);
-  // Serial.print(" mV | TX (Pedal) says: ");
-  // Serial.print(sT);
-  // Serial.println(" mV");
+  // Serial.print(" || TX Raw ADC: ");
+  // Serial.print(myPedal.batV);
+  // Serial.print(" | TX mV: ");
+  // Serial.println(sT);
   // ----------------------------------------------------
 
   auto drawBat = [&](int y, const char *L, float val, bool disc) {
@@ -389,16 +481,19 @@ void updateDisplay() {
       display.print(F("---"));
     } else {
       int p = map(constrain((int)val, 3100, 4100), 3100, 4100, 0, 100);
-      int b = map(p, 0, 100, 0, 5);
-      if (p > 0 && b == 0)
-        b = 1;
+      int b = 0;
+      if (p >= 80) b = 5;
+      else if (p >= 60) b = 4;
+      else if (p >= 40) b = 3;
+      else if (p >= 20) b = 2;
+      else if (p > 0) b = 1;
       for (int i = 0; i < 5; i++)
         if (i < b && !(p <= 10 && i == 0 && (millis() / 500 % 2)))
           display.fillRect(x_b + half + 4 + i * 5, y + 4, 3, h - 8,
                            SSD1306_WHITE);
     }
   };
-  drawBat(66, "TX", sT, currentStatus == "DISCONNECTED");
+  drawBat(66, "TX", sT, currentState == SystemState::DISCONNECTED);
   drawBat(98, "RX", sR, false);
   display.display();
 }

@@ -12,8 +12,8 @@
 // =============================================================
 //                    USER CONFIGURATION
 // =============================================================
-const unsigned long STANDBY_MIN = 3;     // Minutes before Laser Standby
-const unsigned long DEEP_SLEEP_MIN = 10; // Minutes before Deep Sleep
+const unsigned long STANDBY_MIN = 1;     // Minutes before Laser Standby
+const unsigned long DEEP_SLEEP_MIN = 2; // Minutes before Deep Sleep
 const unsigned long WAKE_UP_SAFE_TIME =
     1; // SECONDS to ignore trigger after wake up
 const int LORA_TX_POWER =
@@ -342,17 +342,21 @@ void loop() {
     myPedal.laserDist = 150; // 150mm when laser is off
   }
 
-  // Battery monitoring
-  ADMUX = _BV(REFS0) | _BV(MUX4) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1);
-  ADCSRA |= _BV(ADSC);
-  while (bit_is_set(ADCSRA, ADSC))
-    ;
-  analogRead(PIN_BAT);
-  delay(5);
-  myPedal.batV = analogRead(PIN_BAT);
+  // Battery monitoring (500ms rate limit with 5ms quiet period)
+  static unsigned long lastBatReadTx = 0;
+  if (millis() - lastBatReadTx >= 500) {
+    lastBatReadTx = millis();
+    ADMUX = _BV(REFS0) | _BV(MUX4) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1);
+    ADCSRA |= _BV(ADSC);
+    while (bit_is_set(ADCSRA, ADSC))
+      ;
+    analogRead(PIN_BAT);
+    delay(5); // Quiet period for accurate high-impedance reading
+    myPedal.batV = analogRead(PIN_BAT);
+  }
 
   static int lowBatteryCounter = 0;
-  if (millis() > 10000 && myPedal.batV > 0 && myPedal.batV < 217) {
+  if (millis() > 10000 && myPedal.batV > 0 && myPedal.batV < 188) {
     if (++lowBatteryCounter > 50)
       sleepSystem();
   } else
@@ -364,5 +368,4 @@ void loop() {
     LoRa.write((uint8_t *)&myPedal, sizeof(PedalData));
     LoRa.endPacket();
   }
-  delay(1);
 }
