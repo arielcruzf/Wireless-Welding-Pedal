@@ -415,7 +415,7 @@ void loop() {
       else { Serial.print(calMax); Serial.println(F(";")); }
       Serial.print(F("               const int PEDAL_DOWN_MM = "));
       if (calMin == 999) Serial.println(F("---;"));
-      else { Serial.print(calMin); Serial.println(F(";")); }
+      else { Serial.print(calMin + 1); Serial.println(F("; // (Included +1mm hardware dead-zone buffer)")); }
       
       Serial.println(F("------------------------------------------------------------"));
       
