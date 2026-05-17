@@ -377,7 +377,6 @@ void loop() {
       Serial.print(F("[LINK STATUS]  "));
       if (currentState == SystemState::DISCONNECTED) {
         Serial.println(F("DISCONNECTED"));
-        Serial.println(F("[PEDAL STATE]  OFFLINE"));
         Serial.print(F("[LASER DIST]   Current: --- mm | Last Released (Rest): "));
         if (lastValidLaserDist == 150) Serial.println(F("--- mm"));
         else { Serial.print(lastValidLaserDist); Serial.println(F(" mm")); }
@@ -388,16 +387,6 @@ void loop() {
           Serial.println(F(" dBm)"));
         } else if (currentState == SystemState::HOLDING) {
           Serial.println(F("HOLDING (interference warning)"));
-        } else if (currentState == SystemState::STANDBY) {
-          Serial.println(F("STANDBY (sleep mode)"));
-        }
-        
-        // 2. Pedal State
-        Serial.print(F("[PEDAL STATE]  "));
-        if (myPedal.switchClosed) {
-          Serial.println(F("PRESSED (Trigger: CLOSED)"));
-        } else {
-          Serial.println(F("RELEASED (Trigger: OPEN)"));
         }
         
         // 3. Laser Distance
@@ -437,11 +426,8 @@ void loop() {
       Serial.print(rxBars);
       Serial.println(F("/5"));
       if (rxRaw > 0) {
-        Serial.print(F("               >>> CALIBRATION SUGGESTION: "));
-        Serial.print(F("If multimeter is 4.23V -> RX_CALIBRATION = "));
+        Serial.print(F("               >>> RX_CALIBRATION = "));
         Serial.print((4230UL * 1000UL) / rxRaw);
-        Serial.print(F("UL | If 4.20V -> "));
-        Serial.print((4200UL * 1000UL) / rxRaw);
         Serial.println(F("UL"));
       }
       
@@ -471,11 +457,8 @@ void loop() {
         Serial.print(txBars);
         Serial.println(F("/5"));
         if (myPedal.batV > 0) {
-          Serial.print(F("               >>> CALIBRATION SUGGESTION: "));
-          Serial.print(F("If multimeter is 4.18V -> TX_CALIBRATION = "));
+          Serial.print(F("               >>> TX_CALIBRATION = "));
           Serial.print((4180UL * 1000UL) / myPedal.batV);
-          Serial.print(F("UL | If 4.15V -> "));
-          Serial.print((4150UL * 1000UL) / myPedal.batV);
           Serial.println(F("UL"));
         }
       }
