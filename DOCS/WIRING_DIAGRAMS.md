@@ -33,13 +33,14 @@ The transmitter integrates the MCU (ATmega32u4 @ 8MHz) and the LoRa SX1278 radio
 | **VL53L4CD - SDA** | Pin 2 (SDA) | 🟡 Yellow | I2C Data |
 | **VL53L4CD - LPN/XSHUT**| Pin 6 | 🟣 Purple | Laser Sleep/Wake Control (Open-Drain) |
 | **MS-105 - COM** | Pin 11 | 🟢 Green | Trigger/Safety (INPUT_PULLUP, Active LOW) |
-| **MS-105 - NO** | GND | ⚫ Black | Closes on press -> LOW on Pin 11 |
+| **MS-105 - NO** | Pin 10 | ⚫ Black | Virtual GND (Set to LOW by MCU) |
 | **LIPO-103048-1500 (+)** | JST BAT (LEFT) | 🔴 Thick Red | 3.7V Power (Check Polarity!) |
 | **LIPO-103048-1500 (-)** | JST BAT (RIGHT)| ⚫ Thick Black | Ground |
-| **Battery Monitor** | A9 (analog) | - | Internal voltage divider |
-| **Power Button - Switch** | EN / GND | ⚫ Black | M10 Button (Latching) - Connect to EN / GND |
-| **Power Button - LED (+)**| Pin 12 | 🔴 Red | Software controlled Status LED (Solid/Blink/Coma) |
-| **Power Button - LED (-)**| GND | ⚫ Black | Ground |
+| **Battery Monitor** | A0 (analog) | - | Internal voltage divider |
+| **Power Button - Switch (+)**| Pin A1 | 🔴 Red | Momentary Power Button (INPUT_PULLUP, Active LOW) [Terminal A4 on Button] |
+| **Power Button - Switch (-)**| Pin A2 | ⚫ Black | Virtual Ground for Switch (MCU set to LOW) [Terminal A3 on Button] |
+| **Power Button - LED (+)**| Pin A3 | 🔴 Red | Software controlled Status LED (Solid/Off) [Terminal A1 on Button] |
+| **Power Button - LED (-)**| Pin A4 | ⚫ Black | Virtual Ground for LED (MCU set to LOW) [Terminal A2 on Button] |
 
 ### Component Specifications (Transmitter)
 
@@ -53,7 +54,7 @@ The transmitter integrates the MCU (ATmega32u4 @ 8MHz) and the LoRa SX1278 radio
 
 > [!TIP]
 > **XSHUT/LPN Resolution (v1.0 POWER-MASTER):** The LPN pin of the sensor is now connected to **Pin 6** using a purple wire. Previous I2C conflicts have been resolved in firmware v1.0 using an Open-Drain software configuration (input for ON, output LOW for OFF), allowing maximum power savings during deep sleep.
-> **Trigger (Pin 11):** The trigger has been moved from Pin 5 to Pin 11 to avoid internal conflicts with the LoRa radio (DIO1).
+> **Trigger (Pin 11):** The trigger has been moved from Pin 5 to Pin 11 to avoid internal conflicts with the LoRa radio (DIO1), utilizing Pin 10 as a software-controlled virtual GND.
 
 > [!CAUTION]
 > **PIN 5 ADVISORY:** Pin 5 of the LoRa32u4 is internally connected to the DIO1 pin of the LoRa module. DO NOT use it as a general input/output to avoid communication failures.
@@ -62,7 +63,7 @@ The transmitter integrates the MCU (ATmega32u4 @ 8MHz) and the LoRa SX1278 radio
 
 ## 2. RECEIVER (Welding Machine)
 
-The receiver picks up the LoRa packet from the pedal and converts the distance into a PWM -> analog (0-10V) signal to control the welder's current. It uses two LR7843 MOSFET modules (opto-isolated, 30A): one as a **firing relay** for the torch and another to **isolate the DAC module's GND**, ensuring a true 0.00V when the pedal is at rest.
+The receiver picks up the LoRa packet from the pedal and converts the distance into a PWM -> analog (0-10V) signal to control the welder's current. It uses two 4-pin **Photocoupler TLP222A (photorelays)**: one as a **firing relay** for the torch and another to **isolate the DAC module's GND**, ensuring a true 0.00V when the pedal is at rest.
 
 ### Wiring Diagram - Receiver (GND Isolation)
 ![Receiver Wiring](file:///Users/ARICF/Documents/PROYECTOS/WELDER%20PEDAL/WEB/wireless-pedal/ai-knowledge-core/docs/hardware/receiver_wiring.png)
@@ -73,23 +74,26 @@ The receiver picks up the LoRa packet from the pedal and converts the distance i
 | :--- | :---: | :---: | :--- |
 | **SSD1306 OLED - SDA** | Pin 2 (SDA) | 🟡 Yellow | I2C Telemetry (distance, battery, status) |
 | **SSD1306 OLED - SCK** | Pin 3 (SCL) | 🔵 Blue | I2C Clock |
-| **SSD1306 OLED - VCC** | 3V3 | 🔴 Red | 3.3V Power |
+| **SSD1306 OLED - VCC** | 3V3 | 🔴 Red | 3.3V Power (from board 3.3V regulator) |
 | **SSD1306 OLED - GND** | GND | ⚫ Black | Ground |
-| **MOSFET #1 - PWM (+)** | Pin 12 | 🟣 Purple | Relay 1 - Fires the welding torch |
-| **MOSFET #1 - GND (-)** | GND | ⚫ Black | Control Ground (MCU) |
-| **MOSFET #2 - PWM (+)** | Pin 11 | 🟠 Orange | Relay 2 - Connects/disconnects DAC GND |
-| **MOSFET #2 - GND (-)** | GND | ⚫ Black | Control Ground (MCU) |
-| **PWM-to-DAC - (PWM)** | Pin 10 | 🟡 Yellow | PWM Signal Input (from MCU) |
-| **PWM-to-DAC - (GND L)** | GND | ⚫ Black | Logic Ground (MCU) |
+| **MOSFET #1 - PWM (+)** | Pin A5 | 🟣 Purple | Relay 1 - Fires the welding torch |
+| **MOSFET #1 - GND (-)** | Pin 10 | ⚫ Black | Virtual Control Ground (MCU set to LOW) |
+| **MOSFET #2 - PWM (+)** | Pin A3 | 🟠 Orange | Relay 2 - Connects/disconnects DAC GND |
+| **MOSFET #2 - GND (-)** | Pin 12 | ⚫ Black | Virtual Control Ground (MCU set to LOW) |
+| **PWM-to-DAC - (PWM)** | Pin 9 | 🟡 Yellow | PWM Signal Input (from MCU) |
+| **PWM-to-DAC - (GND L)** | Pin 6 | ⚫ Black | Logic Ground (MCU set to LOW) |
 | **PWM-to-DAC - (VIN)** | GX12 Pin 5 | 🟡 Yellow | Power Supply (+) from Welder (10-12V) |
 | **PWM-to-DAC - (GND In)** | MOSFET #2 (L) | ⚫ Black | Switched Ground (Galvanic Isolation) |
 | **PWM-to-DAC - (Vo)** | GX12 Pin 7 | 🟢 Green | 0-10V Analog Output to welder |
 | **LIPO-103048-1500 (+)** | JST BAT (LEFT) | 🔴 Thick Red | 3.7V Power (Check Polarity!) |
 | **LIPO-103048-1500 (-)** | JST BAT (RIGHT)| ⚫ Thick Black | Ground |
+| **Buzzer (Alarm)** | Pin A4 | 🟢 Green | Active Buzzer acoustic alarm |
 | **GX12-5P Connector** | Male Plug | - | [See Pinout Table below] |
 | **Power Button - Switch** | EN / GND | ⚫ Black | M10 Button (Latching) - Connect to EN / GND |
-| **Power Button - LED (+)**| Pin A9 | 🔴 Red | Software controlled Status LED (Solid/Off) |
-| **Power Button - LED (-)**| GND | ⚫ Black | Ground |
+| **Power Button - LED (+)**| Pin A1 | 🔴 Red | Software controlled Status LED (Solid/Off) [Terminal A1 on Button] |
+| **Power Button - LED (-)**| Pin A2 | ⚫ Black | Virtual Ground for LED (MCU set to LOW) [Terminal A2 on Button] |
+| **Mode Button - Switch (+)**| Pin 0 (RX) | ⚪ White | Momentary Button for Menu/Modes (Internal Pullup) |
+| **Mode Button - GND (-)**  | Pin 1 (TX) | ⚫ Black | Virtual Ground for Mode button (MCU set to LOW) |
 
 ### Aviation Connector Pinout (GX12-5P Male)
 
@@ -97,14 +101,14 @@ This connector links the Receiver unit to the welding machine's remote/pedal por
 
 | Pin (GX12) | Wire Color | Function | Receiver Connection |
 | :---: | :---: | :--- | :--- |
-| **2** | 🔴 Red | Trigger Switch (+) | **MOSFET #1 - (+) / LOAD** (Bridged) |
-| **3** | ⚫ Black | Trigger Switch (-) | **MOSFET #1 - (-)** |
+| **2** | 🔴 Red | Trigger Switch (+) | **TLP222A #1 Pin 4** (Torch switch (+) · polarity not obligatory) |
+| **3** | ⚫ Black | Trigger Switch (-) | **TLP222A #1 Pin 3** (Torch switch (-) · polarity not obligatory) |
 | **5** | 🟡 Yellow | Remote Ref. (10-12V) | **PWM-to-DAC - (VIN)** (⚪ White in Thermal Ark) |
-| **6** | 🟤 Brown | Remote GND (Min) | **MOSFET #2 - (-)** |
+| **6** | 🟤 Brown | Remote GND (Min) | **TLP222A #2 Pin 4** (GND switch (+) · polarity not obligatory) |
 | **7** | 🟢 Green | Remote Wiper (Sig) | **PWM-to-DAC - (Vo) (0-10V)** |
 
 > [!IMPORTANT]
-> **CRITICAL JUMPER FOR TORCH TRIGGER:** To use MOSFET #1 as an isolated "dry contact" for the welding machine trigger, you **MUST** bridge (solder a jumper wire) between the **`+`** and **`LOAD`** pins on the MOSFET's output side. The welder's positive wire then connects to this bridged point, and the negative wire to the **`-`** pin.
+> **NO JUMPER REQUIRED FOR TLP222A:** Unlike the traditional discrete MOSFET modules, the Photocoupler TLP222A acts as a pure solid-state photorelay. Its outputs are completely isolated, dry, bidirectional contacts that don't share a common ground or power source, providing absolute galvanic isolation out-of-the-box.
 
 ### Component Specifications (Receiver)
 
@@ -112,40 +116,32 @@ This connector links the Receiver unit to the welding machine's remote/pedal por
 | :--- | :--- | :--- |
 | **MCU + LoRa** | DIYmall LoRa32u4 RA-02 | ATmega32u4 · SX1278 433MHz · 3.3V logic · integrated LiPo charging |
 | **OLED Display** | SSD1306 0.96" | 128x64px · I2C · 4 pins (VCC, GND, SCL, SDA) · 3.3V-5V |
-| **MOSFET Driver** | LR7843 (x2) | LR7843 Chip · 30A max · Opto-isolated · 3V-20V PWM control |
+| **Photocoupler** | TLP222A (x2) | Toshiba Photorelay · 4-pin DIP · 60V/500mA max · Solid-state switch · 2500 Vrms isolation · Link: https://es.aliexpress.com/item/1005009404744214.html |
 | **DAC Converter** | PWM-to-DAC 0-10V | PWM Input · 0-5V or 0-10V Output · 12V-30V Power · Multi-turn Pot |
 | **Battery** | LiPo 103048-1500mAh | 3.7V nom. · 10x30x48mm · integrated PCM |
 | **Ext. Connector** | GX12-5P Male | Industrial aviation · 12mm · 5 contacts · Zinc/Nickel |
 
-### MOSFET Wiring Detail (LR7843)
+### Photocoupler Wiring Detail (TLP222A - 4-Pin DIP)
 
-Each MOSFET module has two distinct sides. Based on your board's silk-screen:
+We use two independent **TLP222A** units (each is a single-channel photorelay in a 4-pin DIP package). They act as isolated, bidirectional solid-state switches.
 
-**1. Input Side (Digital Interface / MCU):**
-*   **PWM (+):** Connect to the LoRa32u4 signal pin (**Pin 12** for Torch or **Pin 11** for DAC).
-*   **GND (-):** Connect to the common LoRa32u4 GND.
+#### Photocoupler #1: Torch Trigger (Relay Trigger - FULLY ISOLATED)
+*   **Pin 1:** `LOGIC (+)` = **Pin A5** (MCU Trigger signal)
+*   **Pin 2:** `GND (-)` = **Pin 10** (Virtual ground set to LOW by MCU)
+*   **Pin 3:** `switch (-)` = **GX12 Pin 3 (⚫ Black)** (polarity not obligatory)
+*   **Pin 4:** `switch (+)` = **GX12 Pin 2 (🔴 Red)** (polarity not obligatory)
+*   *Note: When Pin A5 goes HIGH, the internal LED conducts, bridging Pin 3 and Pin 4 together to fire the torch trigger.*
 
-**2. Output Side (Power / LOAD):**
-The LR7843 MOSFET performs **Low-Side Switching**, meaning it opens or closes the path to the negative (`-`).
-
-#### MOSFET #1: Torch Trigger (Relay Trigger - ISOLATED)
-*   **Pin `+` (Output):** Connect to the welder's positive trigger **GX12 Pin 2 (🔴 Red)**, AND bridge it to the **`LOAD`** pin (connect both terminals).
-*   **Pin `LOAD` (Output):** Physically bridged to the `+` pin via a solder jumper.
-*   **Pin `-` (Output):** Connect to the welder's trigger return wire **GX12 Pin 3 (⚫ Black)**.
-*   *Note: This creates a "dry contact" relay effect that keeps the welder's high voltage completely isolated from the Arduino electronics.*
-
-#### MOSFET #2: DAC Ground Isolation (FULLY ISOLATED)
-
-In this configuration, the DAC is powered and grounded **only** by the welder's reference pins, ensuring zero electrical noise return to the Arduino.
-
-*   **Pin `+` (Output):** Connect to **PWM-to-DAC - (VIN)** 🟡 Yellow wire.
-*   **Pin `LOAD` (Output):** Connect to **PWM-to-DAC - (GND In)** ⚫ Black wire.
-*   **Pin `-` (Output):** Connect to the welder's remote ground **GX12 Pin 6 (🟤 Brown)**.
-*   *Note: When Pin 11 is LOW, the MOSFET opens the circuit and physically removes the path between the DAC and the Welder's ground. The DAC powers up using the 10-12V from GX12 Pin 5.*
+#### Photocoupler #2: DAC Ground Isolation (FULLY ISOLATED)
+*   **Pin 1:** `LOGIC (+)` = **Pin A3** (MCU DAC-ON signal)
+*   **Pin 2:** `GND (-)` = **Pin 12** (Virtual ground set to LOW by MCU)
+*   **Pin 3:** `switch (-)` = **PWM-to-DAC - (GND In)** (⚫ Black wire) (polarity not obligatory)
+*   **Pin 4:** `switch (+)` = **GX12 Pin 6 (🟤 Brown)** (polarity not obligatory)
+*   *Note: This switch disconnects the DAC module's ground when the pedal is at rest, ensuring a true 0.00V.*
 
 ---
 
 ### Ground Isolation Details (GND Isolation)
 
 > [!IMPORTANT]
-> The **MOSFET LR7843 #2 (Pin 11)** does not cut the PWM signal; instead, it **physically connects/disconnects the PWM-to-DAC module's GND pin**. It has been moved to Pin 11 for wiring convenience. This ensures a **true 0.00V** at the analog output to the welder when the pedal is at rest.
+> The **TLP222A #2 (Pin A3)** does not cut the PWM signal; instead, it **physically connects/disconnects the PWM-to-DAC module's GND pin**. This ensures a **true 0.00V** at the analog output to the welder when the pedal is at rest.

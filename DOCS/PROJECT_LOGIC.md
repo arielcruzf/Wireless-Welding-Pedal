@@ -65,7 +65,7 @@ Wireless communication between both LoRa32u4 boards operates under an ultra-opti
 *   **Receiver Firmware:** Located in [receiver_v1.1.ino](file:///Users/ARICF/Documents/PROYECTOS/WELDER%20PEDAL/FIRMWARE/receiver_v1.1/receiver_v1.1.ino).
 
 ### 7.2. Trigger Flow and Action ("Dumb Node, Smart Controller" Architecture)
-*   **Transmitter (`transmitter_v1.1.ino`):** Pin 11 acts as the master limit switch. When closed (pedal pressed), it boots the VL53L4CD laser sensor. The transmitter applies raw Median & EMA filtering and compresses the raw distance (10-150mm) into a single byte (`0..254`). If standby is triggered, it radiates a farewell byte `255`. If the laser fails, it falls back to 150mm (mapped). Loop latency is under 10ms.
+*   **Transmitter (`transmitter_v1.1.ino`):** Pin 11 acts as the master limit switch (using Pin 10 as virtual GND). When closed (pedal pressed), it boots the VL53L4CD laser sensor. The transmitter applies raw Median & EMA filtering and compresses the raw distance (10-150mm) into a single byte (`0..254`). If standby is triggered, it radiates a farewell byte `255`. If the laser fails, it falls back to 150mm (mapped). Loop latency is under 10ms.
 *   **Receiver (`receiver_v1.1.ino`):** Constantly listens on 433MHz. When it receives a packet, it decodes `laserM` (if `255` -> Standby, else reconstructs millimeters using `map(laserM, 0, 254, 10, 150)`), unpacks flags for the physical switch, and scales battery raw readings. All welding calibration boundaries (`PEDAL_UP_MM` and `PEDAL_DOWN_MM`) are handled here, mapping the reconstructed distance to active PWM output (0-244).
 
 ### 7.3. The 3-Byte Compressed Payload

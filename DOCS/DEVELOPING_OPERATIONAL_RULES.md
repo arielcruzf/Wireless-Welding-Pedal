@@ -22,7 +22,13 @@ This document outlines the mandatory operational and development rules that the 
 
 ---
 
-## 4. Hardware & Firmware Coding Directives
+## 4. Firmware Versioning & Working Target Policy
+*   **Target the Latest Validated Version:** When applying modifications, refactoring, migrating pins, or implementing new features, we **MUST** always target and apply changes to the **latest validated version** of the software in the active development directories (e.g.,`receiver_v1.1.ino` in the `FIRMWARE/receiver_v1.1/` folder, and `transmitter_v1.1.ino` in `FIRMWARE/transmitter_v1.1/`).
+*   **Baseline Preservation:** Older versions (e.g., legacy `v1.0` under the `receiver` and `transmitter` directories) must remain untouched as stable reference baselines unless the user explicitly requests changes to be backported.
+
+---
+
+## 5. Hardware & Firmware Coding Directives
 To ensure maximum safety, reliability, and zero latency:
 1.  **Non-Blocking Logic:** Never use `delay()` in the main loops. Use non-blocking timers (`millis()`) for state transitions, display updates, and buzzer alerts. Exceptions are allowed only during the `setup()` boot phase (e.g., USB grace period) or physical quiet-periods for the ADC.
 2.  **SRAM Memory Preservation:** Every literal string printed to the Serial Monitor **MUST** be encapsulated in the `F()` macro (e.g., `Serial.println(F("Hello"))`) to prevent SRAM memory exhaustion.

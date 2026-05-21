@@ -29,9 +29,12 @@ const int LORA_TX_POWER = 5; // Tx Power (2 to 20 dBm). 5 is recommended for wor
 //                    HARDWARE PINOUT
 // =============================================================
 #define PIN_SWITCH 11
-#define PIN_LED 12
+#define PIN_SWITCH_GND 10
+#define PIN_LED A3
+#define PIN_LED_GND A4
 #define PIN_BAT A0
-#define PIN_MODE 0
+#define PIN_MODE A1
+#define PIN_MODE_GND A2
 #define PIN_LPN 6 // Low Power (XSHUT) pin
 
 // GLOBAL OBJECTS & STATE
@@ -61,8 +64,14 @@ void setup() {
   delay(3000); // USB Grace Period for IDE recognition
   Serial.begin(115200);
   pinMode(PIN_MODE, INPUT_PULLUP);
+  pinMode(PIN_MODE_GND, OUTPUT);
+  digitalWrite(PIN_MODE_GND, LOW);
   pinMode(PIN_SWITCH, INPUT_PULLUP);
+  pinMode(PIN_SWITCH_GND, OUTPUT);
+  digitalWrite(PIN_SWITCH_GND, LOW);
   pinMode(PIN_LED, OUTPUT);
+  pinMode(PIN_LED_GND, OUTPUT);
+  digitalWrite(PIN_LED_GND, LOW);
   pinMode(PIN_LPN, INPUT); // Startup in High-Z (Power ON via sensor pull-up)
   pinMode(5, OUTPUT);
   digitalWrite(5, HIGH);
@@ -152,13 +161,18 @@ void wakeSystem() {
 void enterDeepSleep() {
   set_sleep_mode(SLEEP_MODE_PWR_DOWN);
   sleep_enable();
-  attachInterrupt(digitalPinToInterrupt(PIN_MODE), []() {}, LOW);
+  int intPin = digitalPinToInterrupt(PIN_MODE);
+  if (intPin != NOT_AN_INTERRUPT) {
+    attachInterrupt(intPin, []() {}, LOW);
+  }
   PCMSK0 |= (1 << PCINT7);
   PCICR |= (1 << PCIE0);
   sei();
   sleep_cpu();
   sleep_disable();
-  detachInterrupt(digitalPinToInterrupt(PIN_MODE));
+  if (intPin != NOT_AN_INTERRUPT) {
+    detachInterrupt(intPin);
+  }
   PCICR &= ~(1 << PCIE0); // Disable Pin Change Interrupts so they don't fire during normal operation
 }
 

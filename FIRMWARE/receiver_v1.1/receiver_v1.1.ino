@@ -31,13 +31,18 @@ const uint32_t TX_BATTERY_CALIBRATION = 17500; // Physical battery voltage calib
 // =============================================================
 //                    HARDWARE PINOUT
 // =============================================================
-#define PIN_PWM 10
-#define PIN_REL1 12
-#define PIN_REL2 11
+#define PIN_PWM 9
+#define PIN_PWM_GND 6
+#define PIN_REL1 A5
+#define PIN_REL1_GND 10
+#define PIN_REL2 A3
+#define PIN_REL2_GND 12
 #define PIN_BAT A0
 #define PIN_MODE 0
-#define PIN_LED A9
-#define PIN_BUZZER 6
+#define PIN_MODE_GND 1
+#define PIN_LED A1
+#define PIN_LED_GND A2
+#define PIN_BUZZER A4
 
 #define EEPROM_ADDR_MODE 0
 #define PWM_MAX_VAL 244 // System hardware limit for active welding PWM
@@ -174,13 +179,21 @@ void setup() {
   Serial.begin(115200);
   pinMode(PIN_LED, OUTPUT);
   digitalWrite(PIN_LED, HIGH);
+  pinMode(PIN_LED_GND, OUTPUT);
+  digitalWrite(PIN_LED_GND, LOW); // Virtual GND for Power Button LED
   pwmOut.begin();
   rel1.begin();
   rel2.begin();
   sysBuzzer.begin();
   pinMode(PIN_MODE, INPUT_PULLUP);
-  pinMode(5, OUTPUT);
-  digitalWrite(5, LOW);
+  pinMode(PIN_MODE_GND, OUTPUT);
+  digitalWrite(PIN_MODE_GND, LOW); // Virtual GND for Mode button
+  pinMode(PIN_PWM_GND, OUTPUT);
+  digitalWrite(PIN_PWM_GND, LOW);  // Virtual GND for DAC logic ground
+  pinMode(PIN_REL1_GND, OUTPUT);
+  digitalWrite(PIN_REL1_GND, LOW);
+  pinMode(PIN_REL2_GND, OUTPUT);
+  digitalWrite(PIN_REL2_GND, LOW);
 
   currentMode = EEPROM.read(EEPROM_ADDR_MODE);
   if (currentMode > 4)

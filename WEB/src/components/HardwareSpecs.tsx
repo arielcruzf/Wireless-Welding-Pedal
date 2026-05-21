@@ -34,11 +34,11 @@ const RECEIVER_HW: HardwareItem[] = [
     warning: "Remember to choose the '5Pin Male' version (GX12-5) to ensure compatibility with standard welder ports."
   },
   { 
-    name: "LR7843 Isolated MOSFET Module", 
-    link: "https://es.aliexpress.com/item/1005010491208213.html", 
-    mpn: "LR7843-MOSFET-MOD", 
+    name: "Photocoupler TLP222A (x2)", 
+    link: "https://es.aliexpress.com/item/1005009404744214.html", 
+    mpn: "TLP222A-PHOTO", 
     status: "ok",
-    warning: "Remember to choose the 30V version (LR7843) on the product page."
+    warning: "The TLP222A is a 4-pin single-channel photorelay. Remember to buy two units (one for torch trigger, one for DAC isolation)."
   },
   { name: "0.96 inch OLED 128x64 SSD1306", link: "https://es.aliexpress.com/item/1005006141235306.html", mpn: "SSD1306-OLED-0.96", status: "ok" },
   { 
@@ -195,7 +195,7 @@ export default function HardwareSpecs() {
                   <div className="space-y-4 text-sm text-neutral-600 leading-relaxed">
                     <p><span className="font-bold text-neutral-900">1. Flashing:</span> Upload the receiver `.ino` firmware to the second LoRa32u4 module.</p>
                     <p><span className="font-bold text-neutral-900">2. Interface:</span> Connect the SSD1306 OLED display (I2C) to monitor telemetry and system status.</p>
-                    <p><span className="font-bold text-neutral-900">3. Logic:</span> Integrate the LR7843 MOSFETs and PWM-to-DAC module with the GX12 aviation port.</p>
+                    <p><span className="font-bold text-neutral-900">3. Logic:</span> Integrate the TLP222A-2 photocoupler and PWM-to-DAC module with the GX12 aviation port.</p>
                   </div>
                 </div>
               </div>

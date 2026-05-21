@@ -1,0 +1,16 @@
+{
+  "name": "Fotoacoplador TLP222A",
+  "category": "Driver / Conmutador de Estado Sólido",
+  "chip": "TLP222A",
+  "function": "Control y aislamiento galvánico de señales y disparos",
+  "isolation": "Fotorrelevador optoacoplado de 4 pines",
+  "voltage_max_v": 60,
+  "current_max_ma": 500,
+  "pins": [
+    "Pin 1 (LOGIC + / Anodo)",
+    "Pin 2 (GND - / Catodo)",
+    "Pin 3 (switch - / Drenador)",
+    "Pin 4 (switch + / Drenador)"
+  ],
+  "link": "https://es.aliexpress.com/item/1005009404744214.html"
+}

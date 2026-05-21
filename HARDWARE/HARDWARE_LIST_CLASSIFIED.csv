@@ -10,7 +10,7 @@ Transmitter,Power Switch,M16 Blue Aluminum LED Button,"Model: M16. Type: Momenta
 Receiver,MCU LoRa,DIYmall LoRa32u4 RA-02 433MHz,"MCU: ATmega32u4. RF Chip: SX1278 (LoRa). Frequency: 433MHz. Interface: Internal SPI for SX1278. Logic Voltage: 3.3V. Integrated LiPo charging support.",IC / RF
 Receiver,LiPo Battery,LiPo Battery 3.7V 1500mAh 103048,"Capacity: 1500mAh. Nominal voltage: 3.7V. Dimensions: 10x30x48mm. Protection: Integrated PCM circuit.",Power
 Receiver,LCD/OLED,0.96 inch OLED 128x64 SSD1306,"Driver: SSD1306. Resolution: 128x64. Communication: I2C. Interface: 4 pins (VCC, GND, SCL, SDA). 3.3V logic level compatible. Link: https://es.aliexpress.com/item/1005006141235306.html",Display
-Receiver,MOSFET,LR7843 Isolated MOSFET Module,"Chip: LR7843. Function: High power load control (relay alternative). Isolation: Optocoupled. Control voltage (PWM): 3V-20V. Max current: 30A (with cooling).",Driver
+Receiver,Photocoupler,Photocoupler TLP222A (x2),"Type: 4-pin single-channel photorelay / solid state relay. Output: Photo-MOSFET switch. Max Off-State Voltage: 60V. Max On-State Current: 500mA. Isolation Voltage: 2500 Vrms. Link: https://es.aliexpress.com/item/1005009404744214.html",Driver
 Receiver,DAC Converter,PWM-to-DAC Module (0-10V),"Input: PWM pulse signal. Output: Analog voltage 0-5V or 0-10V. Power: 12V-30V DC recommended. Adjustment: Integrated multi-turn potentiometer.",Signal Conv
 Receiver,Connector,GX12 5-Pin Male Connector,"Model: GX12-5P Male. Type: Aviation/Industrial. Mounting size: 12mm. Pins: 5 contacts. Material: Zinc/Nickel.",Connector
 Receiver,Wires,22AWG Silicone Wire Kit (5 Colors),"Type: Flexible silicone (tinned). Gauge: 22AWG. Quantity: 5 rolls x 10m. Use: High-quality wiring for TIG and components.",Wiring

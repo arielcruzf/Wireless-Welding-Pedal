@@ -14,7 +14,7 @@ El sistema consta de dos módulos: un TRANSMISOR (un pedal mecánico a batería)
 - MCU: LoRa32u4 RA-02 433MHz (ATmega32u4 + SX1278)
 - Energía: Batería LiPo 3.7V 1500mAh
 - Display: 0.96" OLED 128x64 SSD1306 (I2C)
-- Control de Potencia: Módulo MOSFET Aislado LR7843 (Control PWM)
+- Control de Potencia: Fotoacoplador TLP222A (Control de Estado Sólido / Opto-aislado)
 - Salida Analógica: Convertidor PWM-a-DAC (Salida 0-10V)
 - Interfaz de usuario: Botón LED M16.
 
