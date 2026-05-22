@@ -22,11 +22,11 @@
 //                    USER CONFIGURATION
 // =============================================================
 const long FAILSAFE_LIMIT = 1000;        // Max wait time for signal
-const unsigned long DEEP_SLEEP_MIN = 10; // Minutes before Deep Sleep
+const unsigned long DEEP_SLEEP_MIN = 15; // Minutes before Deep Sleep
 const int PEDAL_UP_MM = 60;              // Pedal up distance
-const int PEDAL_DOWN_MM = 17;            // Pedal down distance
+const int PEDAL_DOWN_MM = 18;            // Pedal down distance
 const uint32_t RX_BATTERY_CALIBRATION = 17850; // Physical battery voltage calibration for Receiver
-const uint32_t TX_BATTERY_CALIBRATION = 17500; // Physical battery voltage calibration for Transmitter
+const uint32_t TX_BATTERY_CALIBRATION = 23800; // Physical battery voltage calibration for Transmitter
 
 // =============================================================
 //                    HARDWARE PINOUT
@@ -56,7 +56,7 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 struct __attribute__((packed)) PedalDataPayload {
   uint8_t laserM;  // 0..254 = mapped distance (10..150mm), 255 = STANDBY (999)
   uint8_t flags;   // Bit 0: switchClosed (trigger), Bits 1..7: unused
-  uint8_t batRaw;  // Raw ADC battery reading divided by 2
+  uint8_t batRaw;  // Raw ADC battery reading divided by 4
 };
 
 // Reconstructed/Compatible struct to keep remaining V1.0 logic untouched
@@ -258,6 +258,7 @@ void wakeSystem() {
     currentMode = 0;
   currentPwmMin = currentMode * 61;
   currentState = SystemState::SEARCHING;
+  isStandby = false; // Reset standby flag to boot in active searching state
   lastReception = millis();
   lastActivity = millis();
 
@@ -319,8 +320,8 @@ void loop() {
       myPedal.laserDist = map(rxPayload.laserM, 0, 254, 10, 150);
     }
     
-    // Reconstruct raw ADC battery voltage (divided by 2 on TX)
-    myPedal.batV = (uint16_t)rxPayload.batRaw * 2;
+    // Reconstruct raw ADC battery voltage (divided by 4 on TX)
+    myPedal.batV = (uint16_t)rxPayload.batRaw * 4;
 
     lastReception = millis();
     lastActivity = millis();
@@ -362,7 +363,7 @@ void loop() {
     activateFailsafe();
     outputsEnabled = false;
     systemLocked = true;
-    isStandby = false;
+    // We preserve isStandby's state (retaining visual Standby parpadeo if we timed out from Standby)
     currentState = SystemState::DISCONNECTED;
   } else if (!isStandby && dt > 200) {
     currentState = SystemState::HOLDING;
@@ -380,6 +381,13 @@ void loop() {
   updateDisplay();
 
   sysBuzzer.update();
+
+  // LED status indicator (Blinks in Standby, solid ON when active)
+  if (isStandby) {
+    digitalWrite(PIN_LED, (millis() % 1500 < 1000) ? HIGH : LOW);
+  } else {
+    digitalWrite(PIN_LED, HIGH);
+  }
 
   // Battery Alarm Logic
   static bool alarm10Triggered = false;

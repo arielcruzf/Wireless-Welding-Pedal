@@ -38,8 +38,8 @@ The transmitter integrates the MCU (ATmega32u4 @ 8MHz) and the LoRa SX1278 radio
 | **LIPO-103048-1500 (-)** | JST BAT (RIGHT)| ⚫ Thick Black | Ground |
 | **Battery Monitor** | A0 (analog) | - | Internal voltage divider |
 | **Power Button - Switch (+)**| Pin A1 | 🔴 Red | Momentary Power Button (INPUT_PULLUP, Active LOW) [Terminal A4 on Button] |
-| **Power Button - Switch (-)**| Pin A2 | ⚫ Black | Virtual Ground for Switch (MCU set to LOW) [Terminal A3 on Button] |
-| **Power Button - LED (+)**| Pin A3 | 🔴 Red | Software controlled Status LED (Solid/Off) [Terminal A1 on Button] |
+| **Power Button - Switch (-)**| Pin A5 | ⚫ Black | Virtual Ground for Switch (MCU set to LOW) [Terminal A3 on Button] |
+| **Power Button - LED (+)**| Pin A3 | 🔴 Red | Software controlled Status LED (Blinks in Standby) [Terminal A1 on Button] |
 | **Power Button - LED (-)**| Pin A4 | ⚫ Black | Virtual Ground for LED (MCU set to LOW) [Terminal A2 on Button] |
 
 ### Component Specifications (Transmitter)

@@ -35,3 +35,5 @@ To ensure maximum safety, reliability, and zero latency:
 3.  **Non-Blocking Diagnostics:** All telemetry and diagnostic logs in the Serial Monitor must be wrapped in `if (Serial)` check, so they execute instantly and bypass printing overhead entirely when no USB Serial Monitor is connected.
 4.  **Hardware-Driven Calibration:** Battery calibration multipliers (`RX_CALIBRATION`, `TX_CALIBRATION`) should be adjusted using the live suggestions generated automatically in the Serial Monitor telemetry block.
 5.  **Relay Failsafe Enforcement:** The welding output relays (`PIN_REL1`, `PIN_REL2`) and the PWM signal must be immediately de-energized/locked to `0` when a signal loss (LoRa timeout) or Standby state is detected.
+6.  **Embedded C++ Standard:** Always write `.ino` firmware using clean, lightweight **Embedded C++** patterns. Avoid dynamic memory allocation (no `new`/`delete` or `std::vector`), prevent runtime heap fragmentation, prefer static or stack-allocated memory, and implement object-oriented abstractions or standard patterns only when they do not introduce memory overhead or compromise firmware execution speed.
+

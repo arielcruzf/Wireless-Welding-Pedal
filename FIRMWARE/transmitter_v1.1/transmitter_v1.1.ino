@@ -23,7 +23,7 @@
 const unsigned long STANDBY_MIN = 3;     // Minutes before Laser Standby
 const unsigned long DEEP_SLEEP_MIN = 10; // Minutes before Deep Sleep
 const unsigned long WAKE_UP_SAFE_TIME = 1; // SECONDS to ignore trigger after wake up
-const int LORA_TX_POWER = 5; // Tx Power (2 to 20 dBm). 5 is recommended for workshop.
+const int LORA_TX_POWER = 12; // Tx Power (2 to 20 dBm). 5 is recommended for workshop.
 
 // =============================================================
 //                    HARDWARE PINOUT
@@ -34,7 +34,7 @@ const int LORA_TX_POWER = 5; // Tx Power (2 to 20 dBm). 5 is recommended for wor
 #define PIN_LED_GND A4
 #define PIN_BAT A0
 #define PIN_MODE A1
-#define PIN_MODE_GND A2
+#define PIN_MODE_GND A5
 #define PIN_LPN 6 // Low Power (XSHUT) pin
 
 // GLOBAL OBJECTS & STATE
@@ -44,7 +44,7 @@ VL53L4CD sensor;
 struct __attribute__((packed)) PedalData {
   uint8_t laserM;  // 0..254 = mapped distance (10..150mm), 255 = STANDBY/999
   uint8_t flags;   // Bit 0: switchClosed (trigger), Bits 1..7: unused
-  uint8_t batRaw;  // Raw ADC battery reading divided by 2 (preserves RX calibration)
+  uint8_t batRaw;  // Raw ADC battery reading divided by 4 (preserves RX calibration)
 };
 
 PedalData myPedal = {254, 0, 0}; // Mapped distance 254 (150mm inactive default)
@@ -58,6 +58,7 @@ float smoothedDist = 150.0;
 // Global Button State
 bool btnLastState = false;
 unsigned long btnStartTime = 0;
+uint8_t standbyCycles = 0; // 500ms cycle counter for synchronized standby blinking
 
 // === 0. INITIALIZATION ===
 void setup() {
@@ -240,6 +241,7 @@ void loop() {
     isSleeping = false;
     digitalWrite(PIN_LED, HIGH);
     lastActivityTime = millis();
+    standbyCycles = 0;
   }
 
   // Power Management Checks
@@ -255,10 +257,11 @@ void loop() {
       LoRa.beginPacket();
       LoRa.write((uint8_t *)&myPedal, sizeof(PedalData));
       LoRa.endPacket();
-      delay(5);
+      delay(80); // Spaced out to prevent receiver OLED drawing (blocking I2C) from missing all burst packets
     }
     LoRa.sleep();
     isSleeping = true;
+    standbyCycles = 0;
     lastHeartbeat = millis();
     digitalWrite(PIN_LED, LOW);
   }
@@ -268,38 +271,56 @@ void loop() {
     PCMSK0 |= (1 << PCINT7);
     PCICR |= (1 << PCIE0);
 
-    // Configurar WDT para 2 segundos
+    // Activar interrupción para el botón de encendido (Pin 0 / INT2) para responder rápido
+    int intPin = digitalPinToInterrupt(PIN_MODE);
+    if (intPin != NOT_AN_INTERRUPT) {
+      attachInterrupt(intPin, []() {}, LOW);
+    }
+
+    // Configurar WDT para 500 ms (0.5 segundos)
     WDTCSR |= _BV(WDCE) | _BV(WDE);
-    WDTCSR = _BV(WDP2) | _BV(WDP1) | _BV(WDP0) | _BV(WDIE);
+    WDTCSR = _BV(WDP2) | _BV(WDP0) | _BV(WDIE);
 
     ADCSRA &= ~(1 << ADEN); // Ensure ADC is OFF during sleep (preserves prescaler)
     set_sleep_mode(SLEEP_MODE_PWR_DOWN);
     sleep_enable();
     sei();
-    sleep_cpu(); // MCU duerme aquí por 2s o hasta pisar el pedal
+    sleep_cpu(); // MCU duerme aquí por 500ms o hasta pisar el pedal / pulsar botón
     sleep_disable();
     ADCSRA |= (1 << ADEN); // Re-enable ADC for battery measurement preserving prescaler
 
+    if (intPin != NOT_AN_INTERRUPT) {
+      detachInterrupt(intPin);
+    }
     PCICR &= ~(1 << PCIE0);
     WDTCSR &= ~_BV(WDIE); // Desactivar WDT
 
-    // Si despertó por WDT y el pedal no está presionado, enviar heartbeat
+    // Si despertó por WDT o botón, y el pedal no está presionado, gestionar parpadeo y latido
     if (digitalRead(PIN_SWITCH) != LOW) {
-      Serial.println(F("TX: Standby Heartbeat Sent"));
-      lastHeartbeat = millis();
-      digitalWrite(PIN_LED, HIGH);
-      myPedal.laserM = 255;
-      myPedal.flags = 0;
-      LoRa.idle();
-      delay(2);
-      LoRa.beginPacket();
-      LoRa.write((uint8_t *)&myPedal, sizeof(PedalData));
-      LoRa.endPacket();
-      LoRa.sleep();
-      digitalWrite(PIN_LED, LOW);
+      // Incrementar el contador de ciclos de 500 ms
+      standbyCycles++;
 
-      // Compensar la congelación del millis()
-      lastActivityTime -= 2000;
+      // Parpadeo sincronizado de 1500 ms (1000 ms ON, 500 ms OFF)
+      // Ciclos: 0 (ON), 1 (ON), 2 (OFF) -> Repetir
+      bool ledState = ((standbyCycles % 3) < 2);
+      digitalWrite(PIN_LED, ledState ? HIGH : LOW);
+
+      // Enviar latido de Standby cada 2 segundos (cada 4 ciclos de 500 ms)
+      if (standbyCycles % 4 == 0) {
+        Serial.println(F("TX: Standby Heartbeat Sent"));
+        lastHeartbeat = millis();
+        myPedal.laserM = 255;
+        myPedal.flags = 0;
+        LoRa.idle();
+        delay(2);
+        LoRa.beginPacket();
+        LoRa.write((uint8_t *)&myPedal, sizeof(PedalData));
+        LoRa.endPacket();
+        LoRa.sleep();
+      }
+
+      // Compensar la congelación del millis() por los 500 ms dormido
+      lastActivityTime -= 500;
     }
     return;
   }
@@ -343,7 +364,7 @@ void loop() {
       if (diff > 3) {
         smoothedDist = (float)filteredMm;
       } else {
-        smoothedDist = (0.15 * (float)filteredMm) + (0.85 * smoothedDist);
+        smoothedDist = (0.20 * (float)filteredMm) + (0.80 * smoothedDist);
       }
       
       // Map physical range 10..150mm to 0..254 for ultra-low Time-on-Air payload
@@ -367,13 +388,12 @@ void loop() {
     analogRead(PIN_BAT);
     delay(5); // Quiet period for accurate high-impedance reading
     rawBatADC = analogRead(PIN_BAT);
-    myPedal.batRaw = (uint8_t)(rawBatADC / 2); // Pack into single byte
+    myPedal.batRaw = (uint8_t)(rawBatADC / 4); // Pack into single byte safely without overflow
   }
 
   static int lowBatteryCounter = 0;
-  // Recover Vcc in mV: 1125300L / (batRaw * 2)
-  uint32_t currentVcc = (myPedal.batRaw > 0) ? (1125300UL / ((uint32_t)myPedal.batRaw * 2UL)) : 4000;
-  if (millis() > 10000 && myPedal.batRaw > 0 && currentVcc < 3300) {
+  // Adjusted low battery threshold logic (35 * 4 = 140 rawADC threshold, ~3.3V physical cutoff)
+  if (millis() > 10000 && myPedal.batRaw > 0 && myPedal.batRaw < 35) {
     if (++lowBatteryCounter > 50)
       sleepSystem();
   } else

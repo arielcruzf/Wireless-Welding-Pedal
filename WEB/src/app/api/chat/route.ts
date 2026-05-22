@@ -5,7 +5,7 @@ import { retrieveRelevantContext } from "../../../../ai-knowledge-core/rag-pipel
 
 // Initialize Gemini for Text Generation
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 // Initialize Upstash Redis for History
 const redis = new Redis({
