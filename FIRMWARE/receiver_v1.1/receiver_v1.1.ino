@@ -403,34 +403,47 @@ void loop() {
     digitalWrite(PIN_LED, HIGH);
   }
 
-  // Battery Alarm Logic
-  static bool alarm10Triggered = false;
-  static bool alarm5Triggered = false;
+  // Battery Alarm Logic (Dual-layer monitoring in millivolts)
+  static bool alarm10Triggered = false; // Level 1: 3.2V (10% display) -> 3 Buzzes
+  static bool alarm5Triggered = false;  // Level 2: 3.1V (0% display) -> 5 Buzzes
+  static bool alarm3Triggered = false;  // Level 3: 3.0V (Critical shutdown warning) -> 10 Buzzes
 
-  int pTX = (currentState != SystemState::DISCONNECTED)
-                ? map(constrain((int)sT, 3100, 4100), 3100, 4100, 0, 100)
-                : 100;
-  int pRX = map(constrain((int)sR, 3100, 4100), 3100, 4100, 0, 100);
-  int lowestBat = min(pTX, pRX);
+  bool txActive = (currentState == SystemState::CONNECTED || 
+                   currentState == SystemState::STANDBY || 
+                   currentState == SystemState::HOLDING);
+  int lowestBatMV = (txActive && sT > 0)
+                        ? min((int)sT, (int)sR)
+                        : (int)sR;
 
-  if (lowestBat <= 5) {
+  if (lowestBatMV <= 3000) {
+    if (!alarm3Triggered) {
+      sysBuzzer.trigger(10);
+      alarm3Triggered = true;
+      alarm5Triggered = true;
+      alarm10Triggered = true;
+    }
+  } else if (lowestBatMV <= 3100) {
     if (!alarm5Triggered) {
       sysBuzzer.trigger(5);
       alarm5Triggered = true;
       alarm10Triggered = true;
     }
-  } else if (lowestBat <= 10) {
+    if (lowestBatMV > 3020) {
+      alarm3Triggered = false; // Hysteresis to re-enable Level 3
+    }
+  } else if (lowestBatMV <= 3200) {
     if (!alarm10Triggered) {
       sysBuzzer.trigger(3);
       alarm10Triggered = true;
     }
-    if (lowestBat > 7) {
-      alarm5Triggered = false;
+    if (lowestBatMV > 3120) {
+      alarm5Triggered = false; // Hysteresis to re-enable Level 2
     }
   } else {
-    if (lowestBat > 12) {
-      alarm10Triggered = false;
+    if (lowestBatMV > 3220) {
+      alarm10Triggered = false; // Hysteresis to re-enable Level 1
       alarm5Triggered = false;
+      alarm3Triggered = false;
     }
   }
 }
