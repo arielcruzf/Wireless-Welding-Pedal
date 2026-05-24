@@ -5,6 +5,14 @@
 #include <SPI.h>
 #include <Wire.h>
 #include <avr/sleep.h>
+#include <avr/wdt.h>
+
+// Disable Watchdog Timer immediately on boot to prevent bootloop on ATmega32U4
+void disable_wdt_early(void) __attribute__((naked, section(".init3")));
+void disable_wdt_early(void) {
+  MCUSR = 0;
+  wdt_disable();
+}
 
 /**
  * PROJECT: Wireless Welder Pedal v1.1 | RECEIVER
@@ -175,7 +183,6 @@ BuzzerAlarm sysBuzzer(PIN_BUZZER);
 
 // === 0. INITIALIZATION ===
 void setup() {
-  delay(3000); // USB Grace Period for IDE recognition
   Serial.begin(115200);
   pinMode(PIN_LED, OUTPUT);
   digitalWrite(PIN_LED, HIGH);
@@ -202,6 +209,7 @@ void setup() {
 
   activateFailsafe();
   if (display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    Wire.setWireTimeout(3000, true); // Capa 1: Evitar bloqueos I2C
     display.setRotation(1);
     display.clearDisplay();
     display.setTextSize(1);
@@ -218,11 +226,14 @@ void setup() {
   currentState = SystemState::SEARCHING;
   lastReception = millis();
   lastActivity = millis();
+  
   // Setup complete
+  wdt_enable(WDTO_1S); // Capa 2: Watchdog de 1 segundo para recuperacion EMI
 }
 
 // === 1. POWER MANAGEMENT ===
 void sleepSystem() {
+  wdt_disable(); // Desactivar Watchdog antes de dormir
   outputsEnabled = false;
   activateFailsafe();
   digitalWrite(PIN_LED, LOW);
@@ -263,11 +274,15 @@ void wakeSystem() {
   lastActivity = millis();
 
   // Wake complete
+  wdt_enable(WDTO_1S); // Reactivar Watchdog al despertar
 }
 
 // === 2. MAIN LOOP ===
 void loop() {
+  wdt_reset(); // Alimentar al Watchdog en cada ciclo
+
   if (!powerState) {
+    wdt_disable(); // Desactivar WDT durante el sueño profundo
     ADCSRA &= ~(1 << ADEN); // Ensure ADC is OFF (preserving prescaler)
     set_sleep_mode(SLEEP_MODE_PWR_DOWN);
     sleep_enable();
