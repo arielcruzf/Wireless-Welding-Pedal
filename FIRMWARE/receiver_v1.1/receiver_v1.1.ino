@@ -7,11 +7,11 @@
 #include <avr/sleep.h>
 #include <avr/wdt.h>
 
-// Disable Watchdog Timer immediately on boot to prevent bootloop on ATmega32U4
-void disable_wdt_early(void) __attribute__((naked, section(".init3")));
-void disable_wdt_early(void) {
-  MCUSR = 0;
-  wdt_disable();
+// Watchdog Interrupt Service Routine (ISR)
+ISR(WDT_vect) {
+  // Watchdog timed out (system froze) - Perform a clean software restart
+  void(* resetFunc) (void) = 0;
+  resetFunc();
 }
 
 /**
@@ -227,7 +227,9 @@ void setup() {
   lastActivity = millis();
   
   // Setup complete
-  wdt_enable(WDTO_1S); // Capa 2: Watchdog de 1 segundo para recuperacion EMI
+  MCUSR &= ~_BV(WDRF);
+  WDTCSR |= _BV(WDCE) | _BV(WDE);
+  WDTCSR = _BV(WDP2) | _BV(WDP1) | _BV(WDIE); // Capa 2: Watchdog de 1 segundo en Modo Interrupción (evita bloqueos de bootloader)
 }
 
 // === 1. POWER MANAGEMENT ===
@@ -273,7 +275,9 @@ void wakeSystem() {
   lastActivity = millis();
 
   // Wake complete
-  wdt_enable(WDTO_1S); // Reactivar Watchdog al despertar
+  MCUSR &= ~_BV(WDRF);
+  WDTCSR |= _BV(WDCE) | _BV(WDE);
+  WDTCSR = _BV(WDP2) | _BV(WDP1) | _BV(WDIE); // Reactivar Watchdog en Modo Interrupción al despertar
 }
 
 // === 2. MAIN LOOP ===
