@@ -209,7 +209,6 @@ void setup() {
 
   activateFailsafe();
   if (display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
-    Wire.setWireTimeout(3000, true); // Capa 1: Evitar bloqueos I2C
     display.setRotation(1);
     display.clearDisplay();
     display.setTextSize(1);
