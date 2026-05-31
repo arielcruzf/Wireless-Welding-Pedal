@@ -20,8 +20,8 @@
 // =============================================================
 //                    USER CONFIGURATION
 // =============================================================
-const unsigned long STANDBY_MIN = 3;     // Minutes before Laser Standby
-const unsigned long DEEP_SLEEP_MIN = 10; // Minutes before Deep Sleep
+const unsigned long STANDBY_MIN = 1;     // Minutes before Laser Standby
+const unsigned long DEEP_SLEEP_MIN = 2; // Minutes before Deep Sleep
 const unsigned long WAKE_UP_SAFE_TIME = 1; // SECONDS to ignore trigger after wake up
 const int LORA_TX_POWER = 12; // Tx Power (2 to 20 dBm). 5 is recommended for workshop.
 
@@ -205,15 +205,6 @@ void loop() {
     lastActivityTime = millis();
   }
 
-  // Hot-plug USB detection for IDE
-  static bool lastVbus = false;
-  bool currentVbus = (USBSTA & (1 << VBUS));
-  if (currentVbus && !lastVbus) {
-    USBDevice.detach();
-    delay(500);
-    USBDevice.attach();
-  }
-  lastVbus = currentVbus;
 
   // Shutdown button logic
   if (btn) {
@@ -267,17 +258,17 @@ void loop() {
   }
 
   if (isSleeping) {
-    // Activar interrupción para el pedal (para salir de Standby si se pisa)
+    // Enable Pin Change Interrupt for the pedal (to wake up from Standby if stepped on)
     PCMSK0 |= (1 << PCINT7);
     PCICR |= (1 << PCIE0);
 
-    // Activar interrupción para el botón de encendido (Pin 0 / INT2) para responder rápido
+    // Enable external interrupt for the mode button (Pin A1 / INT) if supported, for quick wake-up
     int intPin = digitalPinToInterrupt(PIN_MODE);
     if (intPin != NOT_AN_INTERRUPT) {
       attachInterrupt(intPin, []() {}, LOW);
     }
 
-    // Configurar WDT para 500 ms (0.5 segundos)
+    // Configure Watchdog Timer for 500 ms (0.5 seconds)
     WDTCSR |= _BV(WDCE) | _BV(WDE);
     WDTCSR = _BV(WDP2) | _BV(WDP0) | _BV(WDIE);
 
@@ -285,7 +276,7 @@ void loop() {
     set_sleep_mode(SLEEP_MODE_PWR_DOWN);
     sleep_enable();
     sei();
-    sleep_cpu(); // MCU duerme aquí por 500ms o hasta pisar el pedal / pulsar botón
+    sleep_cpu(); // MCU sleeps here for 500ms or until pedal press / button press
     sleep_disable();
     ADCSRA |= (1 << ADEN); // Re-enable ADC for battery measurement preserving prescaler
 
@@ -293,19 +284,19 @@ void loop() {
       detachInterrupt(intPin);
     }
     PCICR &= ~(1 << PCIE0);
-    WDTCSR &= ~_BV(WDIE); // Desactivar WDT
+    WDTCSR &= ~_BV(WDIE); // Disable Watchdog Timer
 
-    // Si despertó por WDT o botón, y el pedal no está presionado, gestionar parpadeo y latido
+    // If woken by WDT or button, and the pedal switch is not pressed, manage blink and heartbeat
     if (digitalRead(PIN_SWITCH) != LOW) {
-      // Incrementar el contador de ciclos de 500 ms
+      // Increment the 500ms sleep cycle counter
       standbyCycles++;
 
-      // Parpadeo sincronizado de 1500 ms (1000 ms ON, 500 ms OFF)
-      // Ciclos: 0 (ON), 1 (ON), 2 (OFF) -> Repetir
+      // Synchronized blinking of 1500 ms (1000 ms ON, 500 ms OFF)
+      // Cycles: 0 (ON), 1 (ON), 2 (OFF) -> Repeat
       bool ledState = ((standbyCycles % 3) < 2);
       digitalWrite(PIN_LED, ledState ? HIGH : LOW);
 
-      // Enviar latido de Standby cada 2 segundos (cada 4 ciclos de 500 ms)
+      // Send Standby Heartbeat every 2 seconds (every 4 cycles of 500 ms)
       if (standbyCycles % 4 == 0) {
         Serial.println(F("TX: Standby Heartbeat Sent"));
         lastHeartbeat = millis();
@@ -319,7 +310,7 @@ void loop() {
         LoRa.sleep();
       }
 
-      // Compensar la congelación del millis() por los 500 ms dormido
+      // Compensate for millis() freeze during the 500ms sleep duration
       lastActivityTime -= 500;
     }
     return;

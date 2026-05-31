@@ -225,11 +225,13 @@ void setup() {
   currentState = SystemState::SEARCHING;
   lastReception = millis();
   lastActivity = millis();
-  
   // Setup complete
-  MCUSR &= ~_BV(WDRF);
-  WDTCSR |= _BV(WDCE) | _BV(WDE);
-  WDTCSR = _BV(WDP2) | _BV(WDP1) | _BV(WDIE); // Capa 2: Watchdog de 1 segundo en Modo Interrupción (evita bloqueos de bootloader)
+  bool usbConnected = (USBSTA & (1 << VBUS));
+  if (!usbConnected) {
+    MCUSR &= ~_BV(WDRF);
+    WDTCSR |= _BV(WDCE) | _BV(WDE);
+    WDTCSR = _BV(WDP2) | _BV(WDP1) | _BV(WDIE); // Capa 2: Activar Watchdog de 1.0s solo en modo autónomo (evita interferir con USB)
+  }
 }
 
 // === 1. POWER MANAGEMENT ===
@@ -275,17 +277,17 @@ void wakeSystem() {
   lastActivity = millis();
 
   // Wake complete
-  MCUSR &= ~_BV(WDRF);
-  WDTCSR |= _BV(WDCE) | _BV(WDE);
-  WDTCSR = _BV(WDP2) | _BV(WDP1) | _BV(WDIE); // Reactivar Watchdog en Modo Interrupción al despertar
+  bool usbConnected = (USBSTA & (1 << VBUS));
+  if (!usbConnected) {
+    MCUSR &= ~_BV(WDRF);
+    WDTCSR |= _BV(WDCE) | _BV(WDE);
+    WDTCSR = _BV(WDP2) | _BV(WDP1) | _BV(WDIE); // Reactivar Watchdog en Modo Interrupción al despertar si no hay USB
+  }
 }
 
 // === 2. MAIN LOOP ===
 void loop() {
-  wdt_reset(); // Alimentar al Watchdog en cada ciclo
-
   if (!powerState) {
-    wdt_disable(); // Desactivar WDT durante el sueño profundo
     ADCSRA &= ~(1 << ADEN); // Ensure ADC is OFF (preserving prescaler)
     set_sleep_mode(SLEEP_MODE_PWR_DOWN);
     sleep_enable();
@@ -407,47 +409,34 @@ void loop() {
     digitalWrite(PIN_LED, HIGH);
   }
 
-  // Battery Alarm Logic (Dual-layer monitoring in millivolts)
-  static bool alarm10Triggered = false; // Level 1: 3.2V (10% display) -> 3 Buzzes
-  static bool alarm5Triggered = false;  // Level 2: 3.1V (0% display) -> 5 Buzzes
-  static bool alarm3Triggered = false;  // Level 3: 3.0V (Critical shutdown warning) -> 10 Buzzes
+  // Battery Alarm Logic
+  static bool alarm10Triggered = false;
+  static bool alarm5Triggered = false;
 
-  bool txActive = (currentState == SystemState::CONNECTED || 
-                   currentState == SystemState::STANDBY || 
-                   currentState == SystemState::HOLDING);
-  int lowestBatMV = (txActive && sT > 0)
-                        ? min((int)sT, (int)sR)
-                        : (int)sR;
+  int pTX = (currentState != SystemState::DISCONNECTED)
+                ? map(constrain((int)sT, 3100, 4100), 3100, 4100, 0, 100)
+                : 100;
+  int pRX = map(constrain((int)sR, 3100, 4100), 3100, 4100, 0, 100);
+  int lowestBat = min(pTX, pRX);
 
-  if (lowestBatMV <= 3000) {
-    if (!alarm3Triggered) {
-      sysBuzzer.trigger(10);
-      alarm3Triggered = true;
-      alarm5Triggered = true;
-      alarm10Triggered = true;
-    }
-  } else if (lowestBatMV <= 3100) {
+  if (lowestBat <= 5) {
     if (!alarm5Triggered) {
       sysBuzzer.trigger(5);
       alarm5Triggered = true;
       alarm10Triggered = true;
     }
-    if (lowestBatMV > 3020) {
-      alarm3Triggered = false; // Hysteresis to re-enable Level 3
-    }
-  } else if (lowestBatMV <= 3200) {
+  } else if (lowestBat <= 10) {
     if (!alarm10Triggered) {
       sysBuzzer.trigger(3);
       alarm10Triggered = true;
     }
-    if (lowestBatMV > 3120) {
-      alarm5Triggered = false; // Hysteresis to re-enable Level 2
+    if (lowestBat > 7) {
+      alarm5Triggered = false;
     }
   } else {
-    if (lowestBatMV > 3220) {
-      alarm10Triggered = false; // Hysteresis to re-enable Level 1
+    if (lowestBat > 12) {
+      alarm10Triggered = false;
       alarm5Triggered = false;
-      alarm3Triggered = false;
     }
   }
 }
