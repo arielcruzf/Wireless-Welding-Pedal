@@ -20,10 +20,10 @@
 // =============================================================
 //                    USER CONFIGURATION
 // =============================================================
-const unsigned long STANDBY_MIN = 1;     // Minutes before Laser Standby
-const unsigned long DEEP_SLEEP_MIN = 2; // Minutes before Deep Sleep
+const unsigned long STANDBY_MIN = 3;     // Minutes before Laser Standby
+const unsigned long DEEP_SLEEP_MIN = 10; // Minutes before Deep Sleep
 const unsigned long WAKE_UP_SAFE_TIME = 1; // SECONDS to ignore trigger after wake up
-const int LORA_TX_POWER = 12; // Tx Power (2 to 20 dBm). 5 is recommended for workshop.
+const int LORA_TX_POWER = 20; // Tx Power (2 to 20 dBm). 5 is recommended for workshop.
 
 // =============================================================
 //                    HARDWARE PINOUT
@@ -73,7 +73,14 @@ void setup() {
   pinMode(PIN_LED, OUTPUT);
   pinMode(PIN_LED_GND, OUTPUT);
   digitalWrite(PIN_LED_GND, LOW);
+  
+  // Force a hardware reset of the TOF sensor by pulling XSHUT LOW
+  pinMode(PIN_LPN, OUTPUT);
+  digitalWrite(PIN_LPN, LOW);
+  delay(50); // Keep LOW for 50ms to ensure reset
   pinMode(PIN_LPN, INPUT); // Startup in High-Z (Power ON via sensor pull-up)
+  delay(50); // Wait for sensor to boot after reset
+  
   pinMode(5, OUTPUT);
   digitalWrite(5, HIGH);
   delay(500);
@@ -390,7 +397,7 @@ void loop() {
   } else
     lowBatteryCounter = 0;
 
-  if (millis() - lastTxTime > 33) { // Rate limit LoRa to ~30Hz (Baja latencia)
+  if (millis() - lastTxTime > 33) { // Rate limit LoRa to ~30Hz (Low latency)
     lastTxTime = millis();
     LoRa.beginPacket();
     LoRa.write((uint8_t *)&myPedal, sizeof(PedalData));

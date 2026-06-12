@@ -11,8 +11,8 @@ This document outlines the mandatory operational and development rules that the 
 ---
 
 ## 2. Git & GitHub Update Policy
-*   **Absolute Strict Control:** **DO NOT** create any local commits (`git commit`) and **DO NOT** push to the remote repository (`git push`) automatically.
-*   **Explicit Command Only:** The assistant must completely freeze all Git tracking. Local history updates and remote pushes must ONLY be executed when the user explicitly commands it (e.g., "actualizar github", "actualizar git hub local", "push", etc.).
+*   **Absolute Strict Restriction:** **NEVER** run any Git commands (such as `git add`, `git commit`, `git push`, etc.) or modify the repository state, whether locally or on remote platforms like GitHub, **unless the user explicitly and literally commands you to do so** (e.g., "actualiza todo en git", "push git hub", etc.).
+*   **Freeze by Default:** By default, all Git operations are completely frozen. The assistant must focus solely on local file modifications in the workspace and never perform git commits, pushes, or staging unless explicitly instructed.
 
 ---
 

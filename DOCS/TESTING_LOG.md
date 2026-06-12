@@ -54,3 +54,10 @@ This document chronologically records the problems encountered, hypotheses propo
 ## PHASE 6: OLED Interface Refinement and RSSI Calibration
 *   **Geometric Interface (OLED):** The Receiver's screen design was updated using `drawRoundRect` (rounded corners) for the 4 information blocks (PWM, Antenna, Bat TX, Bat RX). Dynamic mathematical centering for the PWM percentage text was implemented, and the disconnection 'X' icon size was reduced.
 *   **LoRa Antenna Calibration:** The RSSI signal mapping was adjusted. Since LoRa technology operates efficiently with very weak signals, a range of `-110dBm` (0 bars) to `-60dBm` (5 full bars) was established, achieving a realistic visual representation of link strength at normal working distances (5-10 meters).
+
+---
+
+## PHASE 7: TOF Sensor Reset and Lockup Prevention (v1.1 Patch)
+*   **Problem:** The TOF laser sensor (VL53L4CD) would occasionally get stuck in a locked-up or disconnected state. Pressing the microcontroller's physical RESET button did not restore functionality, and the sensor remained dead until a complete power cycle (disconnecting the battery/USB) was performed.
+*   **Root Cause:** The microcontroller's physical RESET button resets the ATmega32u4 but does not cut power to the 3.3V/5V rails. During reset, microcontroller pins enter a High-Z input state. Since the sensor was configured to pull up `XSHUT` (`PIN_LPN`), it remained powered and in its locked state without experiencing a hardware reset.
+*   **Solution:** Implemented a hardware reset sequence at the start of `setup()` in the transmitter firmware. The `PIN_LPN` (XSHUT) pin is now explicitly pulled `LOW` (GND) for 50ms to force the TOF sensor to shut down, then returned to `INPUT` (High-Z) to let it boot cleanly, followed by a 50ms stabilization delay before initializing the library.
