@@ -34,7 +34,7 @@ import path from "path";
 import * as readline from "readline";
 
 // Load environment variables from .env.local BEFORE importing logic
-dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
+dotenv.config({ path: path.resolve(process.cwd(), ".env.local"), override: true });
 
 import { ingestDocs } from "./rag-pipeline";
 

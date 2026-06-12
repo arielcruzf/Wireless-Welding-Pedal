@@ -43,6 +43,8 @@ interface VectorEntry {
 
 // 1. Embedding Generation
 async function generateEmbedding(text: string): Promise<number[]> {
+  // Add a 1.5s delay to stay within free-tier Rate Limits (15 RPM)
+  await new Promise(resolve => setTimeout(resolve, 1500));
   const model = getEmbeddingModel();
   const result = await model.embedContent({
     content: { parts: [{ text }], role: "user" },
